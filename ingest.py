@@ -106,14 +106,23 @@ def transcribe_mp3_with_openai(file_bytes: bytes, client: AzureOpenAI) -> str:
         audio_file = io.BytesIO(file_bytes)
         audio_file.name = "audio.mp3"
         
-        # Use Azure OpenAI Whisper API
-        transcript = client.audio.transcriptions.create(
-            model="whisper-001",  # Use the correct model name for this endpoint
-            file=audio_file,
-            response_format="text"
-        )
+        # Try different Whisper model names
+        models_to_try = ["whisper-001", "audiototext", "whisper"]
         
-        return transcript
+        for model in models_to_try:
+            try:
+                transcript = client.audio.transcriptions.create(
+                    model=model,
+                    file=audio_file,
+                    response_format="text"
+                )
+                return transcript
+            except Exception as model_error:
+                logger.warning(f"Model {model} failed: {model_error}")
+                continue
+        
+        # If all models fail, return a helpful message
+        raise Exception("No Whisper deployment found. Please check your Azure OpenAI configuration.")
         
     except Exception as e:
         logger.error(f"Failed to transcribe MP3 with Azure OpenAI: {e}")
