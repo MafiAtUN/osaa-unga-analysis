@@ -19,7 +19,7 @@ load_dotenv()
 from prompts import SYSTEM_MESSAGE, build_user_prompt, get_question_set
 from classify import infer_classification, get_au_members
 from ingest import extract_text_from_file, validate_text_length
-from llm import run_analysis, get_available_models, OpenAIError
+from llm import run_analysis, get_available_models, OpenAIError, chunk_and_synthesize
 from storage import db_manager
 from sdg_utils import extract_sdgs, detect_africa_mention, format_sdgs
 from export_utils import create_export_files, format_filename
@@ -88,35 +88,18 @@ def get_whisper_client() -> Optional[AzureOpenAI]:
         )
     return None
 
-def sidebar_upload_section():
-    """Render the sidebar upload section."""
-    st.sidebar.header("📁 Upload Document")
-    
-    # Clear session button
-    if st.sidebar.button("🔄 Clear Session", help="Clear all auto-detected data and start fresh"):
-        # Clear auto-detection data
-        if 'auto_detected_country' in st.session_state:
-            del st.session_state.auto_detected_country
-        if 'auto_detected_classification' in st.session_state:
-            del st.session_state.auto_detected_classification
-        if 'last_uploaded_file' in st.session_state:
-            del st.session_state.last_uploaded_file
-        if 'last_pasted_text' in st.session_state:
-            del st.session_state.last_pasted_text
-        if 'edit_country' in st.session_state:
-            del st.session_state.edit_country
-        st.rerun()
-    
+def upload_section():
+    """Render the upload section."""
     # File uploader
-    uploaded_file = st.sidebar.file_uploader(
+    uploaded_file = st.file_uploader(
         "Choose a file",
         type=['pdf', 'docx', 'mp3'],
         help="Upload a PDF, Word document, or MP3 audio file"
     )
     
     # Text input fallback
-    st.sidebar.header("📝 Or Paste Text")
-    pasted_text = st.sidebar.text_area(
+    st.subheader("📝 Or Paste Text")
+    pasted_text = st.text_area(
         "Paste transcript here",
         height=100,
         help="Alternative to file upload - paste the speech text directly"
@@ -470,6 +453,54 @@ def sidebar_metadata_section(uploaded_file=None, pasted_text=None):
     
     return model
 
+def process_analysis_with_text(extracted_text, country, speech_date, classification, model):
+    """Process analysis with already extracted text."""
+    try:
+        # Validate text length
+        if not validate_text_length(extracted_text):
+            st.warning("Text is very long. This may take several minutes and cost more.")
+        
+        # Build prompt
+        question_set = get_question_set(classification)
+        user_prompt = build_user_prompt(
+            extracted_text, classification, country, 
+            speech_date.strftime('%Y-%m-%d') if speech_date else None,
+            question_set
+        )
+        
+        # Run analysis
+        with st.spinner("🧠 AI is analyzing your speech..."):
+            client = get_openai_client()
+            if not client:
+                st.error("❌ OpenAI client not available.")
+                return None
+            
+            response = run_analysis(
+                SYSTEM_MESSAGE, 
+                user_prompt, 
+                model=model,
+                client=client
+            )
+        
+        if response:
+            # Save to database
+            analysis_id = db_manager.save_analysis(
+                country=country,
+                classification=classification,
+                speech_date=speech_date.strftime('%Y-%m-%d') if speech_date else None,
+                raw_text=extracted_text,
+                output_markdown=response,
+                prompt_used=user_prompt
+            )
+            return analysis_id
+        else:
+            st.error("❌ Analysis failed.")
+            return None
+            
+    except Exception as e:
+        st.error(f"❌ Analysis failed: {e}")
+        return None
+
 def process_analysis(uploaded_file, pasted_text, country, speech_date, 
                     classification, model):
     """Process the analysis."""
@@ -697,36 +728,12 @@ def render_country_selection():
     # Sort countries alphabetically
     all_countries = sorted(list(set(all_countries)))
     
-    # Search functionality
-    search_term = st.text_input(
-        "🔍 Search for country/entity",
-        placeholder="Type a few letters to search...",
-        help="Start typing to filter the list below"
+    # Simple dropdown with all countries
+    country = st.selectbox(
+        "Select Country/Entity",
+        options=[""] + all_countries,
+        help="Choose from the complete list of countries and entities"
     )
-    
-    # Filter countries based on search
-    if search_term:
-        filtered_countries = [c for c in all_countries if search_term.lower() in c.lower()]
-    else:
-        filtered_countries = all_countries[:20]  # Show first 20 by default
-    
-    # Searchable dropdown
-    if filtered_countries:
-        country = st.selectbox(
-            "Select Country/Entity",
-            options=[""] + filtered_countries,
-            help=f"Found {len(filtered_countries)} matches. Select one or type more to refine search."
-        )
-    else:
-        st.warning("No countries found matching your search.")
-        country = ""
-    
-    # Alternative: Allow manual input if not found in list
-    if country == "":
-        country = st.text_input(
-            "Or enter custom country/entity name",
-            help="If your country/entity is not in the list above, enter it here"
-        )
     
     # Auto-detect if it's an African Member State
     if country:
@@ -752,37 +759,54 @@ def render_country_selection():
 
 def process_and_show_text(uploaded_file, pasted_text):
     """Process uploaded file and show extracted text."""
-    text_to_preview = pasted_text if pasted_text else ""
-    
-    if uploaded_file:
-        st.info(f"File: {uploaded_file.name} ({uploaded_file.size:,} bytes)")
+    # Check if we already have extracted text in session state
+    if 'extracted_text' in st.session_state and st.session_state.extracted_text:
+        text_to_preview = st.session_state.extracted_text
+        st.info("📄 Using previously extracted text")
+    else:
+        # Clear any previous extracted text if we have a new file
+        if 'extracted_text' in st.session_state:
+            del st.session_state.extracted_text
+        text_to_preview = pasted_text if pasted_text else ""
         
-        # Process the file
-        try:
-            client = get_openai_client()
-            if client:
-                # Use appropriate client based on file type
-                if uploaded_file.name.lower().endswith('.mp3'):
-                    # Show audio processing message
-                    with st.spinner("🎤 Converting audio to text... This may take a moment."):
-                        whisper_client = get_whisper_client()
+        if uploaded_file:
+            st.info(f"File: {uploaded_file.name} ({uploaded_file.size:,} bytes)")
+            
+            # Process the file
+            try:
+                client = get_openai_client()
+                if client:
+                    # Use appropriate client based on file type
+                    if uploaded_file.name.lower().endswith('.mp3'):
+                        # Show audio processing message
+                        with st.spinner("🎤 Converting audio to text... This may take a moment."):
+                            whisper_client = get_whisper_client()
+                            text_to_preview = extract_text_from_file(
+                                uploaded_file.getvalue(), 
+                                uploaded_file.name, 
+                                whisper_client
+                            )
+                    else:
                         text_to_preview = extract_text_from_file(
                             uploaded_file.getvalue(), 
                             uploaded_file.name, 
-                            whisper_client
+                            client
                         )
+                    
+                    if text_to_preview:
+                        st.success("✅ Text extracted successfully!")
+                        # Store in session state to avoid re-extraction
+                        st.session_state.extracted_text = text_to_preview
+                    else:
+                        st.error("❌ Failed to extract text from file.")
                 else:
-                    text_to_preview = extract_text_from_file(
-                        uploaded_file.getvalue(), 
-                        uploaded_file.name, 
-                        client
-                    )
-        except Exception as e:
-            if "whisper" in str(e).lower() or "audio" in str(e).lower():
-                st.warning(f"⚠️ Audio transcription not available: {e}")
-                st.info("💡 **Tip**: You can still analyze the audio by pasting the transcript text manually in the text area below.")
-            else:
-                st.warning(f"Could not preview file content: {e}")
+                    st.error("❌ OpenAI client not available.")
+            except Exception as e:
+                if "whisper" in str(e).lower() or "audio" in str(e).lower():
+                    st.warning(f"⚠️ Audio transcription not available: {e}")
+                    st.info("💡 **Tip**: You can still analyze the audio by pasting the transcript text manually in the text area below.")
+                else:
+                    st.warning(f"Could not preview file content: {e}")
     
     if text_to_preview:
         # Show extracted text
@@ -793,6 +817,12 @@ def process_and_show_text(uploaded_file, pasted_text):
             disabled=True,
             help="Full transcribed text from the file"
         )
+        
+        # Clear session button for debugging
+        if st.button("🔄 Clear Extracted Text", help="Clear the extracted text and start over"):
+            if 'extracted_text' in st.session_state:
+                del st.session_state.extracted_text
+            st.rerun()
         
         # Download options
         col1, col2, col3 = st.columns(3)
@@ -844,8 +874,8 @@ def render_analysis_section(country, speech_date, classification, uploaded_file,
     # Analyze button
     if st.button("🚀 Analyze Speech", type="primary", use_container_width=True):
         if country:
-            analysis_id = process_analysis(
-                uploaded_file, pasted_text, country, 
+            analysis_id = process_analysis_with_text(
+                text_to_preview, country, 
                 speech_date, classification, "model-router-osaa-2"
             )
             
@@ -919,7 +949,7 @@ def render_new_analysis_tab():
     # Step 2: File Upload (only after country is selected)
     if country:
         st.subheader("📁 Step 2: Upload File or Paste Text")
-        uploaded_file, pasted_text = sidebar_upload_section()
+        uploaded_file, pasted_text = upload_section()
         
         # Step 3: Process file and show text
         if uploaded_file or pasted_text:
@@ -1072,9 +1102,20 @@ def main():
         st.error(f"Database initialization failed: {e}")
         return
     
-    # App title and description
-    st.title("🇺🇳 UN GA Daily Readouts")
-    st.markdown("**Production-ready analysis tool for UN General Assembly speeches**")
+    # Header with OSAA logo
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col1:
+        st.image("logo.svg", width=150)
+    
+    with col2:
+        st.title("🇺🇳 UN GA Daily Readouts")
+        st.markdown("**Production-ready analysis tool for UN General Assembly speeches**")
+    
+    with col3:
+        st.write("")  # Empty column for spacing
+    
+    st.markdown("---")
     
     # Create tabs
     tab1, tab2 = st.tabs(["🆕 New Analysis", "📚 All Analyses"])
