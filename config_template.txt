@@ -1,0 +1,6 @@
+# Azure OpenAI Configuration Template
+# Copy this to .env file and replace with your actual values
+
+AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here
+AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+AZURE_OPENAI_API_VERSION=2024-12-01-preview

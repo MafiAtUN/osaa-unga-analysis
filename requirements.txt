@@ -1,0 +1,11 @@
+streamlit>=1.28.0
+openai>=1.43.0
+pypdf>=3.15.0
+pdfminer.six>=20221105
+python-docx>=0.8.11
+pydub>=0.25.1
+sqlalchemy>=2.0.0
+tiktoken>=0.5.0
+langdetect>=1.0.9
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
