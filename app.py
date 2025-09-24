@@ -1,6 +1,8 @@
 """
 UN GA Daily Readouts - Streamlit App
 Production-ready app for analyzing UN General Assembly speeches
+
+Developed by: SMU Data Team
 """
 
 import os
@@ -1132,6 +1134,12 @@ def main():
         "Built for UN OSAA | "
         "Supports PDF, DOCX, MP3 | "
         "Auto-classifies African Member States vs Development Partners"
+    )
+    st.markdown(
+        "<div style='text-align: center; color: #666; font-size: 12px;'>"
+        "Developed by: <strong>SMU Data Team</strong>"
+        "</div>", 
+        unsafe_allow_html=True
     )
 
 if __name__ == "__main__":
