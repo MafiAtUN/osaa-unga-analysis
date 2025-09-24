@@ -6,6 +6,7 @@ import time
 import logging
 from typing import Optional, Dict, Any
 from openai import AzureOpenAI
+import openai
 import tiktoken
 
 logger = logging.getLogger(__name__)
@@ -206,10 +207,7 @@ def get_available_models() -> list[str]:
         List of model names
     """
     return [
-        "model-router-osaa",
-        "gpt-4o",
-        "gpt-4o-mini", 
-        "gpt-4-turbo",
+        "model-router-osaa-2",
         "gpt-4",
         "gpt-3.5-turbo"
     ]

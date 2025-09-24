@@ -17,6 +17,77 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+def create_docx_from_text(text: str, title: str = "Document") -> bytes:
+    """
+    Create a DOCX file from plain text.
+    
+    Args:
+        text: Plain text content
+        title: Document title
+        
+    Returns:
+        DOCX file as bytes
+    """
+    try:
+        doc = docx.Document()
+        
+        # Add title
+        title_paragraph = doc.add_heading(title, 0)
+        title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Add timestamp
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        doc.add_paragraph(f"Generated on: {timestamp}")
+        doc.add_paragraph()  # Empty line
+        
+        # Add content
+        doc.add_paragraph(text)
+        
+        # Save to bytes
+        doc_bytes = io.BytesIO()
+        doc.save(doc_bytes)
+        doc_bytes.seek(0)
+        return doc_bytes.getvalue()
+        
+    except Exception as e:
+        logger.error(f"Failed to create DOCX from text: {e}")
+        raise Exception(f"Failed to create DOCX: {e}")
+
+def create_odt_from_text(text: str, title: str = "Document") -> bytes:
+    """
+    Create an ODT file from plain text.
+    
+    Args:
+        text: Plain text content
+        title: Document title
+        
+    Returns:
+        ODT file as bytes
+    """
+    try:
+        # For ODT, we'll create a simple HTML structure that can be opened by LibreOffice
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>{title}</title>
+        </head>
+        <body>
+            <h1>{title}</h1>
+            <p><strong>Generated on:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
+            <hr>
+            <div style="white-space: pre-wrap;">{text}</div>
+        </body>
+        </html>
+        """
+        
+        return html_content.encode('utf-8')
+        
+    except Exception as e:
+        logger.error(f"Failed to create ODT from text: {e}")
+        raise Exception(f"Failed to create ODT: {e}")
+
 def generate_docx(analysis_data: Dict[str, Any]) -> bytes:
     """
     Generate a DOCX file from analysis data.
