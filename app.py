@@ -276,7 +276,11 @@ def render_new_analysis_tab():
                             client
                         )
                 except Exception as e:
-                    st.warning(f"Could not preview file content: {e}")
+                    if "whisper" in str(e).lower() or "audio" in str(e).lower():
+                        st.warning(f"⚠️ Audio transcription not available: {e}")
+                        st.info("💡 **Tip**: You can still analyze the audio by pasting the transcript text manually in the text area below.")
+                    else:
+                        st.warning(f"Could not preview file content: {e}")
             
             if text_to_preview:
                 with st.expander("Show extracted text", expanded=False):
@@ -464,9 +468,13 @@ def render_settings_tab():
     
     if current_key and current_endpoint:
         st.success("✅ Azure OpenAI configuration found in environment variables")
-        masked_key = current_key[:8] + "..." + current_key[-4:] if len(current_key) > 12 else "***"
-        st.code(f"API Key: {masked_key}")
-        st.code(f"Endpoint: {current_endpoint}")
+        
+        # Show minimal information for security
+        st.info("🔒 **API Key**: Configured and secure")
+        st.info(f"🌐 **Endpoint**: {current_endpoint}")
+        
+        # Security note
+        st.warning("🔒 **Security**: API keys are stored securely in environment variables and are not exposed in the code or GitHub repository.")
     else:
         st.warning("⚠️ Azure OpenAI configuration not found in environment variables")
         
