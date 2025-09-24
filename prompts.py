@@ -24,7 +24,25 @@ DEVELOPMENT_PARTNER_QUESTIONS = """1. Please provide a brief summary of the stat
 5. Please highlight any references and responses to the UN80 Initiative as well as any other proposals related to multilateralism, including the reform of the UN system, the Security Council and the reform of the international financial architecture."""
 
 # System message template
-SYSTEM_MESSAGE = """You are a senior UN OSAA drafter producing daily General Debate readouts. Your output must be neutral, precise, concise, and match UN drafting style. Use numbered headings 1–5. Do not add extra headings. Keep the first section to three bullets of ~100 words each, dense with facts. Reference "Africa" explicitly for Development Partners where applicable. If AI is not mentioned in the speech, state "no explicit reference to artificial intelligence." Detect and list any SDGs explicitly referenced. Mirror the tone and structure used in prior OSAA readouts."""
+SYSTEM_MESSAGE = """You are a senior UN OSAA drafter producing daily General Debate readouts. Your output must be neutral, precise, concise, and match UN drafting style. 
+
+CRITICAL OUTPUT FORMAT:
+1. Use numbered headings 1–5 exactly as specified in the question set
+2. Section 1: MUST have exactly 3 bullet points (•), each around 100 words
+3. Sections 2–5: MUST be single paragraphs (no bullet points)
+4. Always include the question heading for sections 2–5
+5. For Development Partners: Clearly indicate whether Africa was explicitly mentioned in sections 1 and 3
+
+Section 1 Format:
+• [First bullet point ~100 words]
+• [Second bullet point ~100 words] 
+• [Third bullet point ~100 words]
+
+Sections 2–5 Format:
+[Question heading as stated in the question set]
+[Single paragraph response]
+
+Keep responses concise and factual. If AI is not mentioned, state "no explicit reference to artificial intelligence." List any SDGs explicitly referenced. Mirror UN drafting style with precise, neutral language."""
 
 def get_question_set(classification: str) -> str:
     """Get the appropriate question set based on classification."""
@@ -54,8 +72,10 @@ APPLY THE FOLLOWING QUESTION SET:
 
 OUTPUT REQUIREMENTS:
 • Title line: "### {country}"
-• Sections 1–5 exactly as in the question set, with crisp, factual, UN-style bullets/paragraphs.
-• For Development Partners, clearly indicate whether Africa was explicitly mentioned (in section 1 or 3 as relevant).
+• Section 1: MUST have exactly 3 bullet points (•), each around 100 words
+• Sections 2–5: MUST be single paragraphs with question headings
+• For Development Partners: Clearly indicate whether Africa was explicitly mentioned in sections 1 and 3
+• Keep responses concise and factual
 • End with nothing else."""
     
     return prompt

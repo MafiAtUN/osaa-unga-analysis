@@ -275,7 +275,10 @@ class DatabaseManager:
             "source_filename": analysis.source_filename,
             "raw_text": analysis.raw_text,
             "prompt_used": analysis.prompt_used,
-            "output_markdown": analysis.output_markdown
+            "output_markdown": analysis.output_markdown,
+            # Map output_markdown to both structured_readout and analysis for compatibility
+            "structured_readout": analysis.output_markdown,
+            "analysis": analysis.output_markdown
         }
 
 # Global database manager instance
