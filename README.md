@@ -2,6 +2,8 @@
 
 A production-ready Streamlit application for analyzing UN General Assembly speeches. The app extracts text from PDF, Word documents, or MP3 audio files, automatically classifies entities as African Member States or Development Partners, and generates structured readouts using OpenAI's GPT models.
 
+**Developed by: SMU Data Team**
+
 ## Features
 
 - **Multi-format Support**: Upload PDF, DOCX, or MP3 files or paste text directly
