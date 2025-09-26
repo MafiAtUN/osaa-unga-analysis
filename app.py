@@ -81,7 +81,13 @@ def check_password():
 
 def show_login_form():
     """Display the login form."""
-    st.title("🔐 UN GA Daily Readouts - Authentication Required")
+    # Header with OSAA logo
+    col_header1, col_header2, col_header3 = st.columns([1, 2, 1])
+    
+    with col_header2:
+        st.image("artifacts/logo/OSAA identifier acronym white.svg", width=200)
+        st.title("🔐 UN GA Daily Readouts - Authentication Required")
+        st.markdown("**Internal tool for UN OSAA Intergovernmental Support Team**")
     
     # Center the login form
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -116,7 +122,7 @@ def show_login_form():
                 st.rerun()
         
         # Help text
-        st.info("💡 Contact your administrator if you need access to this application.")
+        st.info("💡 This is an internal tool created for UN OSAA Intergovernmental Support Team to analyze General Assembly speeches. Internal limited use only. If you do not have credentials, please reach out to UN OSAA IGS team.")
         
         # Footer
         st.markdown("---")
@@ -789,22 +795,36 @@ def process_analysis(uploaded_file, pasted_text, country, speech_date,
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
-                # Fun messages for audio processing
+                # Enhanced messages for audio processing
                 fun_messages = [
-                    "🎤 Converting audio to words... (This might take a moment)",
-                    "🤖 Our AI is listening carefully to every word...",
+                    "🎤 Converting audio to text... (This may take 30-60 seconds)",
+                    "🤖 AI Whisper is listening carefully to every word...",
                     "📝 Transforming sound waves into beautiful text...",
-                    "🎧 The Whisper AI is working its magic...",
+                    "🎧 Processing your speech with advanced AI...",
                     "⚡ Converting audio to text... (Almost there!)",
-                    "🔊 Processing your speech... (AI is all ears!)",
+                    "🔊 AI is analyzing your speech patterns...",
                     "📄 Turning sound into sentences...",
-                    "🎵 From audio to alphabet... (This is music to our AI's ears!)"
+                    "🎵 From audio to alphabet... (This is music to our AI's ears!)",
+                    "🧠 AI is understanding your speech context...",
+                    "✨ Creating a perfect transcript for you...",
+                    "🎯 AI is processing your audio with precision...",
+                    "🔍 Whisper AI is working its magic on your speech..."
                 ]
                 
                 import random
+                import time
+                
+                # Show initial message
                 fun_message = random.choice(fun_messages)
                 status_text.text(fun_message)
-                progress_bar.progress(20)
+                progress_bar.progress(10)
+                
+                # Show progress updates
+                for i in range(2):
+                    time.sleep(0.3)
+                    fun_message = random.choice(fun_messages)
+                    status_text.text(fun_message)
+                    progress_bar.progress(20 + (i * 30))
                 
                 # Use appropriate client based on file type
                 if filename.lower().endswith('.mp3'):
@@ -1047,15 +1067,60 @@ def process_and_show_text(uploaded_file, pasted_text, show_ui=True):
                 if client:
                     # Use appropriate client based on file type
                     if uploaded_file.name.lower().endswith('.mp3'):
-                        # Show audio processing message
+                        # Show comprehensive audio processing message
                         if show_ui:
-                            with st.spinner("🎤 Converting audio to text... This may take a moment."):
-                                whisper_client = get_whisper_client()
-                                text_to_preview = extract_text_from_file(
-                                    uploaded_file.getvalue(), 
-                                    uploaded_file.name, 
-                                    whisper_client
-                                )
+                            # Create a more detailed loading experience for audio
+                            progress_container = st.container()
+                            with progress_container:
+                                st.info("🎤 **Audio File Detected** - Processing with AI Whisper...")
+                                
+                                # Progress bar and status
+                                progress_bar = st.progress(0)
+                                status_text = st.empty()
+                                
+                                # Fun loading messages for audio processing
+                                audio_messages = [
+                                    "🎤 Converting audio to text... (This may take 30-60 seconds)",
+                                    "🤖 AI Whisper is listening carefully to every word...",
+                                    "📝 Transforming sound waves into beautiful text...",
+                                    "🎧 Processing your speech with advanced AI...",
+                                    "⚡ Converting audio to text... (Almost there!)",
+                                    "🔊 AI is analyzing your speech patterns...",
+                                    "📄 Turning sound into sentences...",
+                                    "🎵 From audio to alphabet... (This is music to our AI's ears!)",
+                                    "🧠 AI is understanding your speech context...",
+                                    "✨ Creating a perfect transcript for you..."
+                                ]
+                                
+                                import random
+                                import time
+                                
+                                # Show initial message
+                                status_text.text(random.choice(audio_messages))
+                                progress_bar.progress(10)
+                                
+                                # Simulate progress updates
+                                for i in range(3):
+                                    time.sleep(0.5)
+                                    status_text.text(random.choice(audio_messages))
+                                    progress_bar.progress(20 + (i * 20))
+                                
+                                # Final processing message
+                                status_text.text("🎯 Finalizing transcription...")
+                                progress_bar.progress(90)
+                            
+                            # Actually process the audio
+                            whisper_client = get_whisper_client()
+                            text_to_preview = extract_text_from_file(
+                                uploaded_file.getvalue(), 
+                                uploaded_file.name, 
+                                whisper_client
+                            )
+                            
+                            # Complete the progress
+                            progress_bar.progress(100)
+                            status_text.text("✅ Audio transcription completed!")
+                            
                         else:
                             whisper_client = get_whisper_client()
                             text_to_preview = extract_text_from_file(
@@ -1088,15 +1153,21 @@ def process_and_show_text(uploaded_file, pasted_text, show_ui=True):
             except Exception as e:
                 if show_ui:
                     if "whisper" in str(e).lower() or "audio" in str(e).lower():
+                        st.error("🎤 **Audio Transcription Failed**")
                         st.warning(f"⚠️ Audio transcription not available: {e}")
                         st.info("💡 **Tip**: You can still analyze the audio by pasting the transcript text manually in the text area below.")
+                        st.info("🔧 **Alternative**: Try uploading a different audio format or check your Azure OpenAI Whisper configuration.")
                     else:
                         st.warning(f"Could not preview file content: {e}")
     
     if text_to_preview and show_ui:
         # Auto-scroll to text preview section when text is ready
         if st.session_state.get('text_ready_for_scroll', False):
-            st.success("✅ Text extracted successfully! Please scroll down to see the text preview below.")
+            # Check if this was an audio file for special message
+            if uploaded_file and uploaded_file.name.lower().endswith('.mp3'):
+                st.success("🎉 **Audio Successfully Transcribed!** Your speech has been converted to text.")
+            else:
+                st.success("✅ Text extracted successfully! Please scroll down to see the text preview below.")
             st.info("📄 **Text Preview Section** - Your extracted text is displayed below. You can now proceed to the analysis step.")
             
             # Reset the flag
@@ -1268,7 +1339,8 @@ def render_analysis_section(country, speech_date, classification, uploaded_file,
                     key="suggestion_dropdown_main"
                 )
                 
-                if selected_suggestion:
+                # Update session state when suggestion is selected
+                if selected_suggestion and selected_suggestion != "":
                     st.session_state.selected_question = selected_suggestion
                 
                 # Chat input with pre-populated question
@@ -1572,7 +1644,8 @@ def render_all_analyses_tab():
                     key=f"suggestion_dropdown_{analysis_id}"
                 )
                 
-                if selected_suggestion:
+                # Update session state when suggestion is selected
+                if selected_suggestion and selected_suggestion != "":
                     st.session_state[selected_question_key] = selected_suggestion
                 
                 # Chat input with pre-populated question
@@ -1703,7 +1776,7 @@ def main():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col1:
-        st.image("logo.svg", width=150)
+        st.image("artifacts/logo/OSAA identifier acronym white.svg", width=150)
     
     with col2:
         st.title("🇺🇳 UN GA Daily Readouts")
