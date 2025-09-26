@@ -14,6 +14,14 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
 - **📊 Smart Suggestions**: Pre-built question suggestions for comprehensive analysis
 - **📈 Trend Analysis**: Compare current speeches with historical data
 
+## 🔧 Recent Updates
+
+### v2.1.0 - Dropdown Fix & UI Improvements
+- **✅ Fixed Suggested Questions Dropdown**: Questions now properly load into the chat input when selected
+- **🔄 Improved Session State Management**: Better handling of user interactions and form state
+- **⚡ Enhanced Reactivity**: Added proper Streamlit rerun triggers for seamless user experience
+- **🎯 Better UX**: Suggested questions are only cleared after user submits, not immediately after selection
+
 ## Core Features
 
 - **Multi-format Support**: Upload PDF, DOCX, or MP3 files or paste text directly
