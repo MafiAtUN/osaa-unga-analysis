@@ -93,3 +93,6 @@ coverage.xml
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# UNGA Corpus (large dataset - download separately)
+artifacts/logo/unga-1946-2024-corpus/
