@@ -13,12 +13,15 @@ from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 from openai import AzureOpenAI
 from dotenv import load_dotenv
+import requests
+import json
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Import our modules
-from prompts import SYSTEM_MESSAGE, build_user_prompt, get_question_set
+from prompts import SYSTEM_MESSAGE, build_user_prompt, get_question_set, build_chat_prompt
+from corpus_integration import corpus_manager
 from classify import infer_classification, get_au_members
 from ingest import extract_text_from_file, validate_text_length
 from llm import run_analysis, get_available_models, OpenAIError, chunk_and_synthesize
@@ -44,6 +47,18 @@ def initialize_session_state():
         st.session_state.analysis_count = 0
     if 'current_analysis' not in st.session_state:
         st.session_state.current_analysis = None
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
+    if 'proceed_to_analysis' not in st.session_state:
+        st.session_state.proceed_to_analysis = False
+    if 'load_text_clicked' not in st.session_state:
+        st.session_state.load_text_clicked = False
+    if 'stored_text' not in st.session_state:
+        st.session_state.stored_text = None
+    if 'stored_file' not in st.session_state:
+        st.session_state.stored_file = None
+    if 'analyze_clicked' not in st.session_state:
+        st.session_state.analyze_clicked = False
     
     # Clear auto-detection data on fresh start
     if 'app_initialized' not in st.session_state:
@@ -59,6 +74,58 @@ def initialize_session_state():
             del st.session_state.last_pasted_text
         if 'edit_country' in st.session_state:
             del st.session_state.edit_country
+
+def check_password():
+    """Check if user has entered the correct password."""
+    return st.session_state.authenticated
+
+def show_login_form():
+    """Display the login form."""
+    st.title("🔐 UN GA Daily Readouts - Authentication Required")
+    
+    # Center the login form
+    col1, col2, col3 = st.columns([1, 2, 1])
+    
+    with col2:
+        st.markdown("### Please enter the password to access the application")
+        
+        password = st.text_input(
+            "Password:",
+            type="password",
+            placeholder="Enter password",
+            help="Enter the application password to continue"
+        )
+        
+        col_login, col_clear = st.columns(2)
+        
+        with col_login:
+            if st.button("🚀 Login", type="primary", use_container_width=True):
+                # Get password from environment variable
+                app_password = os.getenv('APP_PASSWORD')
+                if not app_password:
+                    st.error("❌ Application password not configured. Please set APP_PASSWORD environment variable.")
+                elif password == app_password:
+                    st.session_state.authenticated = True
+                    st.success("✅ Authentication successful!")
+                    st.rerun()
+                else:
+                    st.error("❌ Incorrect password. Please try again.")
+        
+        with col_clear:
+            if st.button("🔄 Clear", use_container_width=True):
+                st.rerun()
+        
+        # Help text
+        st.info("💡 Contact your administrator if you need access to this application.")
+        
+        # Footer
+        st.markdown("---")
+        st.markdown(
+            "<div style='text-align: center; color: #666; font-size: 12px;'>"
+            "Built for UN OSAA | Developed by: <strong>SMU Data Team</strong>"
+            "</div>", 
+            unsafe_allow_html=True
+        )
 
 def get_openai_client() -> Optional[AzureOpenAI]:
     """Get Azure OpenAI client for Chat Completions API (Analysis)."""
@@ -92,19 +159,20 @@ def get_whisper_client() -> Optional[AzureOpenAI]:
 
 def upload_section():
     """Render the upload section."""
-    # File uploader
+    # Text input first
+    st.markdown("#### 📝 Paste Text")
+    pasted_text = st.text_area(
+        "Paste transcript here",
+        height=100,
+        help="Paste the speech text directly (will be automatically translated to English if needed)"
+    )
+    
+    # File uploader (second option)
+    st.markdown("#### 📁 Or Upload File")
     uploaded_file = st.file_uploader(
         "Choose a file",
         type=['pdf', 'docx', 'mp3'],
         help="Upload a PDF, Word document, or MP3 audio file"
-    )
-    
-    # Text input fallback
-    st.subheader("📝 Or Paste Text")
-    pasted_text = st.text_area(
-        "Paste transcript here",
-        height=100,
-        help="Alternative to file upload - paste the speech text directly"
     )
     
     return uploaded_file, pasted_text
@@ -455,6 +523,197 @@ def sidebar_metadata_section(uploaded_file=None, pasted_text=None):
     
     return model
 
+def search_web(query: str, max_results: int = 5) -> List[Dict[str, str]]:
+    """Search the web for relevant information."""
+    try:
+        # Use DuckDuckGo search API (free and no API key required)
+        search_url = "https://api.duckduckgo.com/"
+        params = {
+            'q': query,
+            'format': 'json',
+            'no_html': '1',
+            'skip_disambig': '1'
+        }
+        
+        response = requests.get(search_url, params=params, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            results = []
+            
+            # Extract relevant results
+            for result in data.get('results', [])[:max_results]:
+                results.append({
+                    'title': result.get('title', ''),
+                    'url': result.get('url', ''),
+                    'snippet': result.get('text', ''),
+                    'source': 'DuckDuckGo'
+                })
+            
+            # Also try to get related topics
+            for topic in data.get('related_topics', [])[:max_results]:
+                if isinstance(topic, dict) and 'text' in topic:
+                    results.append({
+                        'title': topic.get('text', ''),
+                        'url': topic.get('url', ''),
+                        'snippet': topic.get('text', ''),
+                        'source': 'DuckDuckGo Related'
+                    })
+            
+            return results
+        else:
+            return []
+            
+    except Exception as e:
+        logging.error(f"Web search failed: {e}")
+        return []
+
+def search_past_speeches(country: str, year: int = None) -> List[Dict[str, str]]:
+    """Search for past speeches by the country."""
+    if year is None:
+        year = datetime.now().year - 1
+    
+    # Create search queries for past speeches
+    queries = [
+        f'"{country}" "UN General Assembly" speech {year}',
+        f'"{country}" "General Debate" {year} transcript',
+        f'"{country}" "UNGA" {year} statement',
+        f'"{country}" "United Nations" speech {year}',
+        f'"{country}" "General Assembly" {year} address'
+    ]
+    
+    all_results = []
+    for query in queries:
+        results = search_web(query, max_results=3)
+        all_results.extend(results)
+    
+    # Remove duplicates based on URL
+    seen_urls = set()
+    unique_results = []
+    for result in all_results:
+        if result['url'] not in seen_urls:
+            seen_urls.add(result['url'])
+            unique_results.append(result)
+    
+    return unique_results[:10]  # Return top 10 unique results
+
+def get_suggestion_questions(country: str, classification: str) -> list:
+    """Get compelling suggestion questions based on country and classification."""
+    
+    # Base questions for all countries
+    base_questions = [
+        # Multi-year analysis questions (prioritized)
+        "Compare this speech with their speeches from the past 5 years",
+        "What trends can be observed in this country's UNGA statements over time?",
+        "How has their focus on climate change evolved in recent years?",
+        "What changes in their diplomatic priorities can be seen compared to previous sessions?",
+        "How has their approach to international cooperation changed from previous years?",
+        "What new themes or priorities emerged compared to past speeches?",
+        "How has this country's position evolved since their previous UNGA speech?",
+        "What are the priorities and key topics discussed compared to last year's speech?",
+        "Analyze the evolution of this country's stance on global governance over the past decade",
+        "How has their emphasis on sustainable development changed since 2015?",
+        "What patterns can be identified in their UNGA speeches from 2010-2024?",
+        "Compare their current priorities with speeches from the 1990s and 2000s",
+        "How has their approach to multilateralism evolved since the Cold War era?",
+        "What continuity and change can be observed in their diplomatic language over 20 years?",
+        "How has their focus on peace and security issues shifted since the 1990s?",
+        "What generational changes in leadership priorities are reflected in their speeches?",
+        "How has their engagement with global challenges evolved since the Millennium Development Goals?",
+        "What historical context from their past speeches helps explain current positions?",
+        "How has their relationship with international organizations changed over time?",
+        "What long-term trends in their foreign policy can be identified from UNGA speeches?",
+        # Current analysis questions
+        "What specific SDGs were mentioned in this speech?",
+        "What were the main challenges discussed for achieving sustainable development?",
+        "What partnerships or collaborations were proposed?",
+        "How did they address climate change and environmental issues?",
+        "What role did they see for multilateralism and international cooperation?",
+        "How did they discuss youth empowerment and inclusion?",
+        "What were their views on digital transformation and AI?",
+        "How did they address gender equality and women's empowerment?"
+    ]
+    
+    # African Member State specific questions
+    if classification == "African Member State":
+        african_questions = [
+            "How did they discuss Agenda 2063 and African integration?",
+            "What specific African development priorities were highlighted?",
+            "How did they address peace and security in Africa?",
+            "What role did they see for the African Union?",
+            "How did they discuss debt relief and financial support for Africa?",
+            "What were their views on African youth and education?",
+            "How did they address food security and agricultural development?",
+            "What partnerships did they propose with other African countries?"
+        ]
+        return base_questions + african_questions
+    
+    # Development Partner specific questions
+    else:
+        partner_questions = [
+            "How did they address their commitment to Africa's development?",
+            "What specific support did they offer to African countries?",
+            "How did they discuss their partnership with African institutions?",
+            "What role did they see for international cooperation in Africa?",
+            "How did they address global inequality and development gaps?",
+            "What were their views on South-South cooperation?",
+            "How did they discuss technology transfer to developing countries?",
+            "What commitments did they make to support the SDGs in Africa?"
+        ]
+        return base_questions + partner_questions
+
+def process_chat_question(question: str, analysis_context: str, country: str, classification: str, model: str = "model-router-osaa-2"):
+    """Process a chat question about the analyzed text."""
+    try:
+        # Check if question requires historical analysis (comparison questions)
+        historical_data = ""
+        if any(keyword in question.lower() for keyword in ['compare', 'compared to', 'last year', 'previous', 'past', 'evolution', 'change', 'historical', 'trend']):
+            with st.spinner("📚 Searching historical UNGA speeches..."):
+                # Get historical speeches from corpus
+                historical_speeches = corpus_manager.get_recent_speeches(country, num_years=5)
+                
+                if historical_speeches:
+                    historical_data = "\n\nHISTORICAL UNGA SPEECHES FOR COMPARISON:\n"
+                    historical_data += f"Found {len(historical_speeches)} historical speeches for {country}:\n\n"
+                    
+                    for i, speech in enumerate(historical_speeches[:3], 1):  # Show top 3
+                        historical_data += f"{i}. {speech['year']} (Session {speech['session']}):\n"
+                        historical_data += f"   Word Count: {speech['word_count']:,}\n"
+                        historical_data += f"   Content Preview: {speech['content'][:400]}...\n\n"
+                    
+                    historical_data += "Use this historical data to provide comprehensive comparative analysis."
+                else:
+                    # Fallback to web search if no corpus data
+                    past_speeches = search_past_speeches(country)
+                    if past_speeches:
+                        historical_data = "\n\nADDITIONAL WEB SEARCH RESULTS:\n"
+                        historical_data += "The following information was found about past speeches by this country:\n\n"
+                        
+                        for i, speech in enumerate(past_speeches[:5], 1):
+                            historical_data += f"{i}. {speech['title']}\n"
+                            historical_data += f"   URL: {speech['url']}\n"
+                            historical_data += f"   Summary: {speech['snippet'][:200]}...\n\n"
+        
+        # Build chat prompt with historical data
+        chat_prompt = build_chat_prompt(question, analysis_context, country, classification, historical_data)
+        
+        # Get OpenAI client
+        client = get_openai_client()
+        if not client:
+            return None, "OpenAI client not available."
+        
+        # Run chat analysis
+        response = run_analysis(
+            "You are a UN OSAA expert assistant. Provide detailed, expert responses based on the analysis context. Use UN terminology and diplomatic language. Be precise and factual.",
+            chat_prompt,
+            model=model,
+            client=client
+        )
+        
+        return response, None
+        
+    except Exception as e:
+        return None, f"Chat processing failed: {e}"
+
 def process_analysis_with_text(extracted_text, country, speech_date, classification, model):
     """Process analysis with already extracted text."""
     try:
@@ -759,20 +1018,28 @@ def render_country_selection():
     
     return country, speech_date, classification
 
-def process_and_show_text(uploaded_file, pasted_text):
+def process_and_show_text(uploaded_file, pasted_text, show_ui=True):
     """Process uploaded file and show extracted text."""
     # Check if we already have extracted text in session state
     if 'extracted_text' in st.session_state and st.session_state.extracted_text:
         text_to_preview = st.session_state.extracted_text
-        st.info("📄 Using previously extracted text")
+        if show_ui:
+            st.info("📄 Using previously extracted text")
     else:
         # Clear any previous extracted text if we have a new file
         if 'extracted_text' in st.session_state:
             del st.session_state.extracted_text
         text_to_preview = pasted_text if pasted_text else ""
         
+        # Set flag for auto-scroll if pasted text is provided
+        if pasted_text and pasted_text.strip():
+            st.session_state.text_ready_for_scroll = True
+            if show_ui:
+                st.rerun()
+        
         if uploaded_file:
-            st.info(f"File: {uploaded_file.name} ({uploaded_file.size:,} bytes)")
+            if show_ui:
+                st.info(f"File: {uploaded_file.name} ({uploaded_file.size:,} bytes)")
             
             # Process the file
             try:
@@ -781,7 +1048,15 @@ def process_and_show_text(uploaded_file, pasted_text):
                     # Use appropriate client based on file type
                     if uploaded_file.name.lower().endswith('.mp3'):
                         # Show audio processing message
-                        with st.spinner("🎤 Converting audio to text... This may take a moment."):
+                        if show_ui:
+                            with st.spinner("🎤 Converting audio to text... This may take a moment."):
+                                whisper_client = get_whisper_client()
+                                text_to_preview = extract_text_from_file(
+                                    uploaded_file.getvalue(), 
+                                    uploaded_file.name, 
+                                    whisper_client
+                                )
+                        else:
                             whisper_client = get_whisper_client()
                             text_to_preview = extract_text_from_file(
                                 uploaded_file.getvalue(), 
@@ -796,28 +1071,55 @@ def process_and_show_text(uploaded_file, pasted_text):
                         )
                     
                     if text_to_preview:
-                        st.success("✅ Text extracted successfully!")
+                        if show_ui:
+                            st.success("✅ Text extracted successfully!")
                         # Store in session state to avoid re-extraction
                         st.session_state.extracted_text = text_to_preview
+                        # Set flag to trigger auto-scroll and rerun
+                        st.session_state.text_ready_for_scroll = True
+                        if show_ui:
+                            st.rerun()
                     else:
-                        st.error("❌ Failed to extract text from file.")
+                        if show_ui:
+                            st.error("❌ Failed to extract text from file.")
                 else:
-                    st.error("❌ OpenAI client not available.")
+                    if show_ui:
+                        st.error("❌ OpenAI client not available.")
             except Exception as e:
-                if "whisper" in str(e).lower() or "audio" in str(e).lower():
-                    st.warning(f"⚠️ Audio transcription not available: {e}")
-                    st.info("💡 **Tip**: You can still analyze the audio by pasting the transcript text manually in the text area below.")
-                else:
-                    st.warning(f"Could not preview file content: {e}")
+                if show_ui:
+                    if "whisper" in str(e).lower() or "audio" in str(e).lower():
+                        st.warning(f"⚠️ Audio transcription not available: {e}")
+                        st.info("💡 **Tip**: You can still analyze the audio by pasting the transcript text manually in the text area below.")
+                    else:
+                        st.warning(f"Could not preview file content: {e}")
     
-    if text_to_preview:
-        # Show extracted text
+    if text_to_preview and show_ui:
+        # Auto-scroll to text preview section when text is ready
+        if st.session_state.get('text_ready_for_scroll', False):
+            st.success("✅ Text extracted successfully! Please scroll down to see the text preview below.")
+            st.info("📄 **Text Preview Section** - Your extracted text is displayed below. You can now proceed to the analysis step.")
+            
+            # Reset the flag
+            st.session_state.text_ready_for_scroll = False
+        
+        # Show extracted text with clear instructions
+        st.markdown("### 📄 Extracted Text Preview (English)")
+        st.markdown("*Review the extracted text below. The system automatically translates any non-English speech to English using UN terminology.*")
+        
+        # Add a prominent proceed button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("✅ Proceed to Analysis", type="primary", help="Click to proceed to the analysis step"):
+                st.session_state.proceed_to_analysis = True
+                st.rerun()
+        
         st.text_area(
-            "Extracted Text",
+            "Extracted Text (English)",
             text_to_preview,
             height=300,
             disabled=True,
-            help="Full transcribed text from the file"
+            help="Full transcribed text from the file (automatically translated to English if needed)",
+            key="extracted_text_preview_old"
         )
         
         # Clear session button for debugging
@@ -836,7 +1138,8 @@ def process_and_show_text(uploaded_file, pasted_text):
                 data=text_to_preview,
                 file_name=f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                 mime="text/plain",
-                help="Download as plain text file"
+                help="Download as plain text file",
+                key="download_txt_old"
             )
         
         with col2:
@@ -849,7 +1152,8 @@ def process_and_show_text(uploaded_file, pasted_text):
                     data=docx_content,
                     file_name=f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    help="Download as Microsoft Word document"
+                    help="Download as Microsoft Word document",
+                    key="download_docx_old"
                 )
             except Exception as e:
                 st.error(f"DOCX export not available: {e}")
@@ -864,7 +1168,8 @@ def process_and_show_text(uploaded_file, pasted_text):
                     data=odt_content,
                     file_name=f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.odt",
                     mime="application/vnd.oasis.opendocument.text",
-                    help="Download as OpenDocument Text (LibreOffice/OpenOffice)"
+                    help="Download as OpenDocument Text (LibreOffice/OpenOffice)",
+                    key="download_odt_old"
                 )
             except Exception as e:
                 st.error(f"ODT export not available: {e}")
@@ -935,6 +1240,100 @@ def render_analysis_section(country, speech_date, classification, uploaded_file,
                                         st.markdown(f"<div style='font-size: 14px; line-height: 1.4;'>{content}</div>", unsafe_allow_html=True)
                                 
                                 st.write("---")  # Separator between sections
+                
+                # Chat with Analysis Section
+                st.subheader("💬 Chat with Analysis")
+                st.info("📚 **Historical Access**: This app has access to all UNGA speeches from 1946 to 2024, enabling comprehensive comparative analysis across nearly eight decades of diplomatic history.")
+                st.markdown("Ask questions about the analyzed speech to get more detailed insights.")
+                
+                # Initialize chat history in session state
+                if 'chat_history' not in st.session_state:
+                    st.session_state.chat_history = []
+                
+                # Initialize selected question in session state
+                if 'selected_question' not in st.session_state:
+                    st.session_state.selected_question = ""
+                
+                # Suggestion Questions Section
+                st.markdown("### 💡 Suggested Questions")
+                
+                # Get suggestion questions based on country and classification
+                suggestion_questions = get_suggestion_questions(analysis['country'], analysis['classification'])
+                
+                # Create dropdown for suggested questions
+                selected_suggestion = st.selectbox(
+                    "Choose a suggested question:",
+                    options=[""] + suggestion_questions,
+                    help="Select a question from the dropdown to automatically populate the chat input",
+                    key="suggestion_dropdown_main"
+                )
+                
+                if selected_suggestion:
+                    st.session_state.selected_question = selected_suggestion
+                
+                # Chat input with pre-populated question
+                chat_question = st.text_area(
+                    "Ask a question about the analysis:",
+                    value=st.session_state.get('selected_question', ''),
+                    placeholder="e.g., What specific SDGs were mentioned? What were the main challenges discussed?",
+                    height=100,
+                    help="Ask detailed questions about the speech analysis",
+                    key="chat_input_main"
+                )
+                
+                col_chat, col_clear = st.columns([3, 1])
+                
+                with col_chat:
+                    if st.button("🤖 Ask Question", type="primary", use_container_width=True):
+                        if chat_question.strip():
+                            # Clear selected question after use
+                            if st.session_state.get('selected_question'):
+                                st.session_state.selected_question = ""
+                            
+                            with st.spinner("🧠 AI is thinking about your question..."):
+                                # Get the full analysis context
+                                analysis_context = analysis['output_markdown']
+                                
+                                # Process the chat question
+                                chat_response, error = process_chat_question(
+                                    chat_question, 
+                                    analysis_context, 
+                                    analysis['country'], 
+                                    analysis['classification']
+                                )
+                                
+                                if chat_response:
+                                    # Add to chat history
+                                    st.session_state.chat_history.append({
+                                        'question': chat_question,
+                                        'answer': chat_response,
+                                        'timestamp': datetime.now().strftime('%H:%M:%S')
+                                    })
+                                    st.success("✅ Response generated!")
+                                    
+                                    # Show the answer immediately
+                                    st.subheader("🤖 AI Response")
+                                    st.markdown(chat_response)
+                                    st.markdown("---")
+                                    
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ {error}")
+                        else:
+                            st.warning("Please enter a question.")
+                
+                with col_clear:
+                    if st.button("🗑️ Clear Chat", use_container_width=True):
+                        st.session_state.chat_history = []
+                        st.rerun()
+                
+                # Display chat history
+                if st.session_state.chat_history:
+                    st.subheader("📝 Chat History")
+                    for i, chat in enumerate(st.session_state.chat_history):
+                        with st.expander(f"Q{i+1}: {chat['question'][:50]}... ({chat['timestamp']})"):
+                            st.markdown(f"**Question:** {chat['question']}")
+                            st.markdown(f"**Answer:** {chat['answer']}")
             else:
                 st.error("Analysis not found in database.")
         except Exception as e:
@@ -942,28 +1341,123 @@ def render_analysis_section(country, speech_date, classification, uploaded_file,
 
 def render_new_analysis_tab():
     """Render the New Analysis tab."""
-    st.header("🆕 New Analysis")
     
-    # Step 1: Country Selection (always first)
-    st.subheader("🌍 Step 1: Select Country/Entity")
+    # Nice welcoming message
+    st.markdown("### 📝 Please paste your text or upload a file to begin analysis")
+    st.markdown("*The system will automatically translate any non-English speech to English using UN terminology.*")
+    
+    # Text input and file upload
+    uploaded_file, pasted_text = upload_section()
+    
+    # Country and date selection (always visible)
+    st.markdown("---")
+    st.markdown("### 🌍 Select Country/Entity and Date")
     country, speech_date, classification = render_country_selection()
     
-    # Step 2: File Upload (only after country is selected)
-    if country:
-        st.subheader("📁 Step 2: Upload File or Paste Text")
-        uploaded_file, pasted_text = upload_section()
+    # Load Text button - always show it
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("📄 Load Text", type="primary", help="Click to process and display the text"):
+            # Store the text in session state
+            if pasted_text:
+                st.session_state.stored_text = pasted_text
+                st.success("✅ Text stored!")
+            elif uploaded_file:
+                st.session_state.stored_file = uploaded_file
+                st.success("✅ File stored!")
+            else:
+                st.warning("⚠️ Please paste text or upload a file first!")
+                return
+            st.session_state.load_text_clicked = True
+            st.rerun()
+    
+    
+    # Show text preview and download options when Load Text is clicked
+    if st.session_state.get('load_text_clicked', False):
+        # Get the text to display from session state
+        if 'stored_text' in st.session_state and st.session_state.stored_text:
+            text_to_preview = st.session_state.stored_text
+        elif 'stored_file' in st.session_state and st.session_state.stored_file:
+            text_to_preview = process_and_show_text(st.session_state.stored_file, None, show_ui=False)
+        else:
+            text_to_preview = None
         
-        # Step 3: Process file and show text
-        if uploaded_file or pasted_text:
-            st.subheader("📄 Step 3: Text Preview")
-            text_to_preview = process_and_show_text(uploaded_file, pasted_text)
+        if text_to_preview:
+            st.markdown("---")
+            st.markdown("### 📄 English Text Preview")
+            st.markdown("*The system automatically translates any non-English speech to English using UN terminology.*")
             
-            # Step 4: Analysis (only if we have text)
-            if text_to_preview:
-                st.subheader("🚀 Step 4: Analyze")
-                render_analysis_section(country, speech_date, classification, uploaded_file, pasted_text, text_to_preview)
-    else:
-        st.info("👆 Please select a country/entity to begin analysis")
+            # Show text in a nice window
+            st.text_area(
+                "Extracted Text (English)",
+                text_to_preview,
+                height=300,
+                disabled=True,
+                help="Full transcribed text (automatically translated to English if needed)",
+                key="extracted_text_preview_new"
+            )
+            
+            # Download options
+            st.markdown("#### 📥 Download Options")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Download as TXT
+                st.download_button(
+                    label="📄 Download as TXT",
+                    data=text_to_preview,
+                    file_name=f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                    mime="text/plain",
+                    help="Download as plain text file",
+                    key="download_txt_new"
+                )
+            
+            with col2:
+                # Download as DOCX
+                try:
+                    from docx import Document
+                    doc = Document()
+                    doc.add_paragraph(text_to_preview)
+                    
+                    # Save to bytes
+                    import io
+                    doc_bytes = io.BytesIO()
+                    doc.save(doc_bytes)
+                    doc_bytes.seek(0)
+                    
+                    st.download_button(
+                        label="📝 Download as DOCX",
+                        data=doc_bytes.getvalue(),
+                        file_name=f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        help="Download as Word document",
+                        key="download_docx_new"
+                    )
+                except ImportError:
+                    st.info("📝 DOCX download not available")
+            
+            with col3:
+                # Download as Markdown
+                markdown_content = f"# Speech Transcript\n\n{text_to_preview}"
+                st.download_button(
+                    label="📋 Download as Markdown",
+                    data=markdown_content,
+                    file_name=f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                    mime="text/markdown",
+                    help="Download as Markdown file",
+                    key="download_md_new"
+                )
+            
+            # Show analysis results immediately after text is loaded
+            st.markdown("---")
+            st.markdown("### 📊 Analysis Results")
+            # Use stored file/text for analysis
+            stored_file = st.session_state.get('stored_file', None)
+            stored_text = st.session_state.get('stored_text', None)
+            render_analysis_section(country, speech_date, classification, stored_file, stored_text, text_to_preview)
+        else:
+            st.warning("⚠️ No text available. Please paste text or upload a file first.")
 
 def render_all_analyses_tab():
     """Render the All Analyses tab."""
@@ -1049,6 +1543,102 @@ def render_all_analyses_tab():
                 with st.expander("Show Prompt Used"):
                     st.code(analysis['prompt_used'], language='text')
                 
+                # Chat with Analysis Section
+                st.subheader("💬 Chat with Analysis")
+                st.info("📚 **Historical Access**: This app has access to all UNGA speeches from 1946 to 2024, enabling comprehensive comparative analysis across nearly eight decades of diplomatic history.")
+                st.markdown("Ask questions about this analyzed speech to get more detailed insights.")
+                
+                # Initialize chat history for this analysis
+                chat_key = f"chat_history_{analysis_id}"
+                if chat_key not in st.session_state:
+                    st.session_state[chat_key] = []
+                
+                # Initialize selected question for this analysis
+                selected_question_key = f"selected_question_{analysis_id}"
+                if selected_question_key not in st.session_state:
+                    st.session_state[selected_question_key] = ""
+                
+                # Suggestion Questions Section
+                st.markdown("### 💡 Suggested Questions")
+                
+                # Get suggestion questions based on country and classification
+                suggestion_questions = get_suggestion_questions(analysis['country'], analysis['classification'])
+                
+                # Create dropdown for suggested questions
+                selected_suggestion = st.selectbox(
+                    "Choose a suggested question:",
+                    options=[""] + suggestion_questions,
+                    help="Select a question from the dropdown to automatically populate the chat input",
+                    key=f"suggestion_dropdown_{analysis_id}"
+                )
+                
+                if selected_suggestion:
+                    st.session_state[selected_question_key] = selected_suggestion
+                
+                # Chat input with pre-populated question
+                chat_question = st.text_area(
+                    "Ask a question about the analysis:",
+                    value=st.session_state[selected_question_key],
+                    placeholder="e.g., What specific SDGs were mentioned? What were the main challenges discussed?",
+                    height=100,
+                    help="Ask detailed questions about the speech analysis",
+                    key=f"chat_input_{analysis_id}"
+                )
+                
+                col_chat, col_clear = st.columns([3, 1])
+                
+                with col_chat:
+                    if st.button("🤖 Ask Question", type="primary", use_container_width=True, key=f"ask_btn_{analysis_id}"):
+                        if chat_question.strip():
+                            # Clear selected question after use
+                            if st.session_state[selected_question_key]:
+                                st.session_state[selected_question_key] = ""
+                            
+                            with st.spinner("🧠 AI is thinking about your question..."):
+                                # Get the full analysis context
+                                analysis_context = analysis['output_markdown']
+                                
+                                # Process the chat question
+                                chat_response, error = process_chat_question(
+                                    chat_question, 
+                                    analysis_context, 
+                                    analysis['country'], 
+                                    analysis['classification']
+                                )
+                                
+                                if chat_response:
+                                    # Add to chat history for this analysis
+                                    st.session_state[chat_key].append({
+                                        'question': chat_question,
+                                        'answer': chat_response,
+                                        'timestamp': datetime.now().strftime('%H:%M:%S')
+                                    })
+                                    st.success("✅ Response generated!")
+                                    
+                                    # Show the answer immediately
+                                    st.subheader("🤖 AI Response")
+                                    st.markdown(chat_response)
+                                    st.markdown("---")
+                                    
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ {error}")
+                        else:
+                            st.warning("Please enter a question.")
+                
+                with col_clear:
+                    if st.button("🗑️ Clear Chat", use_container_width=True, key=f"clear_btn_{analysis_id}"):
+                        st.session_state[chat_key] = []
+                        st.rerun()
+                
+                # Display chat history for this analysis
+                if st.session_state[chat_key]:
+                    st.subheader("📝 Chat History")
+                    for i, chat in enumerate(st.session_state[chat_key]):
+                        with st.expander(f"Q{i+1}: {chat['question'][:50]}... ({chat['timestamp']})"):
+                            st.markdown(f"**Question:** {chat['question']}")
+                            st.markdown(f"**Answer:** {chat['answer']}")
+                
                 if st.button("Close Analysis"):
                     del st.session_state.viewing_analysis
                     st.rerun()
@@ -1097,6 +1687,11 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # Check authentication first
+    if not check_password():
+        show_login_form()
+        return
+    
     # Initialize database
     try:
         db_manager.create_db_and_tables()
@@ -1115,12 +1710,15 @@ def main():
         st.markdown("**Production-ready analysis tool for UN General Assembly speeches**")
     
     with col3:
-        st.write("")  # Empty column for spacing
+        # Add logout button
+        if st.button("🚪 Logout", help="Logout from the application"):
+            st.session_state.authenticated = False
+            st.rerun()
     
     st.markdown("---")
     
     # Create tabs
-    tab1, tab2 = st.tabs(["🆕 New Analysis", "📚 All Analyses"])
+    tab1, tab2 = st.tabs(["📝 New Analysis", "📚 All Analyses"])
     
     with tab1:
         render_new_analysis_tab()
