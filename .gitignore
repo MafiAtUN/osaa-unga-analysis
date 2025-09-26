@@ -96,3 +96,11 @@ dmypy.json
 
 # UNGA Corpus (large dataset - download separately)
 artifacts/logo/unga-1946-2024-corpus/
+
+# Azure deployment files (contain sensitive information)
+AZURE_DEPLOYMENT.md
+azure-deploy.sh
+.deployment
+requirements-azure.txt
+startup.sh
+web.config
