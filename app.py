@@ -15,6 +15,10 @@ from openai import AzureOpenAI
 from dotenv import load_dotenv
 import requests
 import json
+import re
+import html
+import time
+from collections import defaultdict
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,6 +36,82 @@ from export_utils import create_export_files, format_filename
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# SECURITY: Rate limiting storage
+user_attempts = defaultdict(list)
+
+# SECURITY: Input sanitization functions
+def sanitize_input(text: str) -> str:
+    """Sanitize user input to prevent injection attacks."""
+    if not text:
+        return ""
+    
+    # Remove potential injection patterns
+    text = re.sub(r'[<>"\']', '', text)
+    text = html.escape(text)
+    # Limit length to prevent abuse
+    text = text[:10000]  # Reasonable limit
+    return text
+
+def validate_prompt_safety(prompt: str) -> bool:
+    """Validate prompt for safety against injection attacks."""
+    if not prompt:
+        return False
+        
+    dangerous_patterns = [
+        r'ignore\s+previous\s+instructions',
+        r'you\s+are\s+now',
+        r'system\s+prompt',
+        r'jailbreak',
+        r'bypass',
+        r'admin',
+        r'root',
+        r'execute',
+        r'command',
+        r'shell',
+        r'<script',
+        r'javascript:',
+        r'data:',
+        r'vbscript:'
+    ]
+    
+    for pattern in dangerous_patterns:
+        if re.search(pattern, prompt, re.IGNORECASE):
+            logger.warning(f"Blocked potentially dangerous prompt pattern: {pattern}")
+            return False
+    return True
+
+def check_rate_limit(user_id: str, max_attempts: int = 5, window: int = 300) -> bool:
+    """Check if user has exceeded rate limit."""
+    now = time.time()
+    attempts = user_attempts[user_id]
+    
+    # Remove old attempts outside the window
+    attempts[:] = [attempt for attempt in attempts if now - attempt < window]
+    
+    if len(attempts) >= max_attempts:
+        logger.warning(f"Rate limit exceeded for user: {user_id}")
+        return False
+    
+    attempts.append(now)
+    return True
+
+def validate_file_upload(file_bytes: bytes, filename: str) -> bool:
+    """Validate uploaded file for security."""
+    # Check file size (50MB limit)
+    max_size = 50 * 1024 * 1024  # 50MB
+    if len(file_bytes) > max_size:
+        logger.warning(f"File too large: {len(file_bytes)} bytes")
+        return False
+    
+    # Check file extension
+    allowed_extensions = ['.pdf', '.docx', '.mp3']
+    file_ext = os.path.splitext(filename.lower())[1]
+    if file_ext not in allowed_extensions:
+        logger.warning(f"Invalid file type: {file_ext}")
+        return False
+    
+    return True
 
 # Page configuration
 st.set_page_config(
@@ -79,6 +159,34 @@ def check_password():
     """Check if user has entered the correct password."""
     return st.session_state.authenticated
 
+def authenticate_user(password: str) -> bool:
+    """Authenticate user with rate limiting."""
+    # Get user identifier (IP or session-based)
+    user_id = st.session_state.get('user_id', 'anonymous')
+    
+    # Check rate limit
+    if not check_rate_limit(user_id):
+        st.error("❌ Too many authentication attempts. Please try again later.")
+        return False
+    
+    # Get password from environment
+    app_password = os.getenv('APP_PASSWORD')
+    if not app_password:
+        st.error("❌ Application password not configured. Please set APP_PASSWORD environment variable.")
+        return False
+    
+    # Sanitize input
+    sanitized_password = sanitize_input(password)
+    
+    # Check password
+    if sanitized_password == app_password:
+        st.session_state.authenticated = True
+        st.session_state.user_id = user_id
+        return True
+    else:
+        st.error("❌ Incorrect password. Please try again.")
+        return False
+
 def show_login_form():
     """Display the login form."""
     # Header with OSAA logo
@@ -106,16 +214,10 @@ def show_login_form():
         
         with col_login:
             if st.button("🚀 Login", type="primary", use_container_width=True):
-                # Get password from environment variable
-                app_password = os.getenv('APP_PASSWORD')
-                if not app_password:
-                    st.error("❌ Application password not configured. Please set APP_PASSWORD environment variable.")
-                elif password == app_password:
-                    st.session_state.authenticated = True
-                    st.success("✅ Authentication successful!")
-                    st.rerun()
-                else:
-                    st.error("❌ Incorrect password. Please try again.")
+                if password:
+                    if authenticate_user(password):
+                        st.success("✅ Authentication successful!")
+                        st.rerun()
         
         with col_clear:
             if st.button("🔄 Clear", use_container_width=True):
@@ -135,18 +237,20 @@ def show_login_form():
 
 def get_openai_client() -> Optional[AzureOpenAI]:
     """Get Azure OpenAI client for Chat Completions API (Analysis)."""
-    # Use the correct analysis endpoint
-    api_key = os.getenv('AZURE_OPENAI_API_KEY') or st.session_state.get('azure_openai_api_key')
-    azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT') or st.session_state.get('azure_openai_endpoint')
+    # SECURITY FIX: Only use environment variables, never session state
+    api_key = os.getenv('AZURE_OPENAI_API_KEY')
+    azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
     api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
     
-    if api_key and azure_endpoint:
-        return AzureOpenAI(
-            api_version=api_version,
-            azure_endpoint=azure_endpoint,
-            api_key=api_key
-        )
-    return None
+    if not api_key or not azure_endpoint:
+        st.error("❌ Azure OpenAI configuration not found. Please set environment variables.")
+        return None
+    
+    return AzureOpenAI(
+        api_version=api_version,
+        azure_endpoint=azure_endpoint,
+        api_key=api_key
+    )
 
 def get_whisper_client() -> Optional[AzureOpenAI]:
     """Get Azure OpenAI client for Whisper API."""
@@ -670,6 +774,17 @@ def get_suggestion_questions(country: str, classification: str) -> list:
 def process_chat_question(question: str, analysis_context: str, country: str, classification: str, model: str = "model-router-osaa-2"):
     """Process a chat question about the analyzed text."""
     try:
+        # SECURITY: Sanitize and validate inputs
+        question = sanitize_input(question)
+        country = sanitize_input(country)
+        classification = sanitize_input(classification)
+        
+        # SECURITY: Validate prompt safety
+        if not validate_prompt_safety(question):
+            return None, "❌ Question contains potentially harmful content. Please rephrase your question."
+        
+        if not question.strip():
+            return None, "❌ Please enter a valid question."
         # Check if question requires historical analysis (comparison questions)
         historical_data = ""
         if any(keyword in question.lower() for keyword in ['compare', 'compared to', 'last year', 'previous', 'past', 'evolution', 'change', 'historical', 'trend']):
@@ -790,6 +905,11 @@ def process_analysis(uploaded_file, pasted_text, country, speech_date,
             if uploaded_file:
                 file_bytes = uploaded_file.getvalue()
                 filename = uploaded_file.name
+                
+                # SECURITY: Validate file upload
+                if not validate_file_upload(file_bytes, filename):
+                    st.error("❌ Invalid file. Please upload a valid PDF, DOCX, or MP3 file (max 50MB).")
+                    return None
                 
                 # Show processing steps
                 progress_bar = st.progress(0)
