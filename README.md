@@ -527,7 +527,7 @@ To switch between different AI providers:
 
 ### Authentication
 
-1. **Login**: Enter password `unosaa-unga-80` to access the application
+1. **Login**: Enter the application password to access the system
 2. **Session**: Stay logged in during your session
 3. **Logout**: Click logout button when finished
 
@@ -843,7 +843,7 @@ For technical support or feature requests, please contact the development team o
 ## New Features Summary
 
 ### 🔐 Security & Authentication
-- **Password Protection**: Secure access with `unosaa-unga-80`
+- **Password Protection**: Secure access with configurable authentication
 - **Session Management**: Persistent login during session
 - **Logout Functionality**: Secure session termination
 
