@@ -2,7 +2,7 @@
 
 A Streamlit application for analyzing UN General Assembly speeches with AI-powered insights. Upload PDF, DOCX, or MP3 files, or paste text directly to generate structured readouts with SDG mapping and historical analysis.
 
-**Developed by: SMU Data Team**
+**Developed by: Mafizul Islam ([@MafiAtUN](https://github.com/MafiAtUN))**
 
 ## Features
 
@@ -18,17 +18,17 @@ A Streamlit application for analyzing UN General Assembly speeches with AI-power
 
 ### 1. Local Installation
 
-```bash
+   ```bash
 # Clone repository
 git clone https://github.com/MafiAtUN/osaa-unga-analysis.git
 cd osaa-unga-analysis
 
 # Create virtual environment
-python3 -m venv osaaunga
-source osaaunga/bin/activate  # On Windows: osaaunga\Scripts\activate
+   python3 -m venv osaaunga
+   source osaaunga/bin/activate  # On Windows: osaaunga\Scripts\activate
 
 # Install dependencies
-pip install -r requirements.txt
+   pip install -r requirements.txt
 
 # Set up environment
 cp env.template .env
@@ -40,7 +40,7 @@ streamlit run app.py
 
 ### 2. Docker Installation
 
-```bash
+   ```bash
 # Build and run with Docker
 docker build -t unga-app .
 docker run -p 8501:8501 \
@@ -52,7 +52,7 @@ docker run -p 8501:8501 \
 
 ### 3. Azure Deployment
 
-```bash
+   ```bash
 # Deploy to Azure App Service
 git remote add azure https://your-app.scm.azurewebsites.net/your-app.git
 git push azure main
@@ -65,7 +65,7 @@ git push azure main
 
 ### Required Environment Variables
 
-```bash
+   ```bash
 AZURE_OPENAI_API_KEY=your-azure-openai-api-key
 AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
 APP_PASSWORD=your-secure-password
@@ -73,7 +73,7 @@ APP_PASSWORD=your-secure-password
 
 ### Optional Variables
 
-```bash
+   ```bash
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 RATE_LIMIT_ATTEMPTS=5
 MAX_FILE_SIZE=52428800
@@ -95,7 +95,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 ```
 
 **Anthropic Claude:**
-```bash
+   ```bash
 pip install anthropic
 # Set ANTHROPIC_API_KEY environment variable
 ```
@@ -176,6 +176,6 @@ streamlit run app.py
 
 ---
 
-**Copyright © 2025 MafiAtUN. All rights reserved.**
+**Copyright © 2025 Mafizul Islam ([@MafiAtUN](https://github.com/MafiAtUN)). All rights reserved.**
 
 **Ready for production deployment on Azure App Service!** 🚀
