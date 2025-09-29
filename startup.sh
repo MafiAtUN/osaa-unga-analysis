@@ -1,17 +1,17 @@
 #!/bin/bash
 
 # Azure App Service startup script for Streamlit
-# This script starts the Streamlit app on Azure
+# Professional UN GA Daily Readouts Application
 
 # Set environment variables
 export PYTHONPATH="${PYTHONPATH}:${HOME}/site/wwwroot"
 
-# Install any missing dependencies
-pip install -r requirements-azure.txt
+# Install dependencies from clean requirements.txt
+pip install -r requirements.txt
 
 # Start Streamlit with Azure-compatible settings
 streamlit run app.py \
-    --server.port 8000 \
+    --server.port $PORT \
     --server.address 0.0.0.0 \
     --server.headless true \
     --server.enableCORS false \
