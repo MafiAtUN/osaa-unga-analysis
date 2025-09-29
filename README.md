@@ -81,21 +81,41 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
    - **File Format**: `{COUNTRY_CODE}_{SESSION}_{YEAR}.txt`
    - **Size**: ~2GB total (not included in repository)
 
-### Local Development
+## 🚀 Installation Options
 
-1. **Clone and setup virtual environment:**
+### Option 1: Local Development
+
+#### Prerequisites
+- Python 3.11 or higher
+- Git
+- Azure OpenAI API access (or alternative LLM provider)
+
+#### Step-by-Step Local Installation
+
+1. **Clone the repository:**
    ```bash
+   git clone https://github.com/your-username/osaa-unga-80.git
    cd osaa-unga-80
-   python3 -m venv osaaunga
-   source osaaunga/bin/activate  # On Windows: osaaunga\Scripts\activate
    ```
 
-2. **Install dependencies:**
+2. **Create and activate virtual environment:**
+   ```bash
+   # Create virtual environment
+   python3 -m venv osaaunga
+   
+   # Activate virtual environment
+   # On macOS/Linux:
+   source osaaunga/bin/activate
+   # On Windows:
+   osaaunga\Scripts\activate
+   ```
+
+3. **Install dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Download and setup UNGA corpus:**
+4. **Download and setup UNGA corpus:**
    ```bash
    # Create corpus directory
    mkdir -p artifacts/logo/unga-1946-2024-corpus
@@ -104,7 +124,7 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
    # Extract the downloaded files to artifacts/logo/unga-1946-2024-corpus/
    ```
 
-3. **Set up environment variables:**
+5. **Configure API access:**
    
    **Option A: Use the setup script (Recommended):**
    ```bash
@@ -113,7 +133,7 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
    
    **Option B: Manual setup:**
    ```bash
-   # Create .env file with your Azure OpenAI configuration
+   # Create .env file with your API configuration
    echo "AZURE_OPENAI_API_KEY=your-azure-openai-api-key-here" > .env
    echo "AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/" >> .env
    echo "AZURE_OPENAI_API_VERSION=2024-12-01-preview" >> .env
@@ -126,24 +146,142 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
    export AZURE_OPENAI_API_VERSION="2024-12-01-preview"
    ```
 
-4. **Run the application:**
+6. **Run the application:**
    ```bash
    streamlit run app.py
    ```
 
 The app will be available at `http://localhost:8501`
 
-### Azure App Service Deployment
+### Option 2: Docker Deployment
+
+#### Prerequisites
+- Docker installed on your system
+- Docker Compose (optional, for easier management)
+
+#### Docker Installation
+
+1. **Create Dockerfile:**
+   ```dockerfile
+   FROM python:3.11-slim
+
+   # Set working directory
+   WORKDIR /app
+
+   # Install system dependencies
+   RUN apt-get update && apt-get install -y \
+       gcc \
+       g++ \
+       && rm -rf /var/lib/apt/lists/*
+
+   # Copy requirements and install Python dependencies
+   COPY requirements.txt .
+   RUN pip install --no-cache-dir -r requirements.txt
+
+   # Copy application code
+   COPY . .
+
+   # Create corpus directory
+   RUN mkdir -p artifacts/logo/unga-1946-2024-corpus
+
+   # Expose port
+   EXPOSE 8501
+
+   # Health check
+   HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
+
+   # Run the application
+   CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+   ```
+
+2. **Create docker-compose.yml:**
+   ```yaml
+   version: '3.8'
+   
+   services:
+     unga-app:
+       build: .
+       ports:
+         - "8501:8501"
+       environment:
+         - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+         - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+         - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+       volumes:
+         - ./artifacts:/app/artifacts
+       restart: unless-stopped
+   ```
+
+3. **Build and run with Docker:**
+   ```bash
+   # Build the image
+   docker build -t unga-app .
+   
+   # Run the container
+   docker run -p 8501:8501 \
+     -e AZURE_OPENAI_API_KEY="your-api-key" \
+     -e AZURE_OPENAI_ENDPOINT="https://your-resource.cognitiveservices.azure.com/" \
+     -e AZURE_OPENAI_API_VERSION="2024-12-01-preview" \
+     -v $(pwd)/artifacts:/app/artifacts \
+     unga-app
+   ```
+
+4. **Or use Docker Compose:**
+   ```bash
+   # Create .env file with your API credentials
+   echo "AZURE_OPENAI_API_KEY=your-api-key" > .env
+   echo "AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/" >> .env
+   echo "AZURE_OPENAI_API_VERSION=2024-12-01-preview" >> .env
+   
+   # Run with docker-compose
+   docker-compose up -d
+   ```
+
+5. **Access the application:**
+   - Open your browser to `http://localhost:8501`
+
+#### Docker Production Deployment
+
+For production deployment with Docker:
+
+```bash
+# Build production image
+docker build -t unga-app:production .
+
+# Run with production settings
+docker run -d \
+  --name unga-app \
+  -p 8501:8501 \
+  -e AZURE_OPENAI_API_KEY="your-api-key" \
+  -e AZURE_OPENAI_ENDPOINT="https://your-resource.cognitiveservices.azure.com/" \
+  -e AZURE_OPENAI_API_VERSION="2024-12-01-preview" \
+  -v /path/to/corpus:/app/artifacts/logo/unga-1946-2024-corpus \
+  --restart unless-stopped \
+  unga-app:production
+```
+
+### Option 3: Azure App Service Deployment
 
 #### Prerequisites
 - Azure subscription
-- OpenAI API key
-- Git repository (optional)
+- Azure CLI installed
+- Git repository access
 
-#### Deployment Steps
+#### Azure Deployment Steps
 
 1. **Create Azure App Service:**
    ```bash
+   # Create resource group
+   az group create --name myResourceGroup --location "East US"
+   
+   # Create App Service plan
+   az appservice plan create \
+     --name myAppServicePlan \
+     --resource-group myResourceGroup \
+     --sku B1 \
+     --is-linux
+   
+   # Create web app
    az webapp create \
      --resource-group myResourceGroup \
      --plan myAppServicePlan \
@@ -151,14 +289,16 @@ The app will be available at `http://localhost:8501`
      --runtime "PYTHON|3.11"
    ```
 
-2. **Set Environment Variables:**
+2. **Configure environment variables:**
    ```bash
    az webapp config appsettings set \
      --resource-group myResourceGroup \
      --name my-un-ga-app \
-     --settings AZURE_OPENAI_API_KEY="your-azure-openai-api-key-here" \
-     --settings AZURE_OPENAI_ENDPOINT="https://your-resource.cognitiveservices.azure.com/" \
-     --settings AZURE_OPENAI_API_VERSION="2024-12-01-preview"
+     --settings \
+     AZURE_OPENAI_API_KEY="your-azure-openai-api-key-here" \
+     AZURE_OPENAI_ENDPOINT="https://your-resource.cognitiveservices.azure.com/" \
+     AZURE_OPENAI_API_VERSION="2024-12-01-preview" \
+     WEBSITES_PORT="8501"
    ```
 
 3. **Deploy via Git:**
@@ -172,7 +312,7 @@ The app will be available at `http://localhost:8501`
    git push azure main
    ```
 
-4. **Set Startup Command:**
+4. **Set startup command:**
    ```bash
    az webapp config set \
      --resource-group myResourceGroup \
@@ -182,9 +322,14 @@ The app will be available at `http://localhost:8501`
 
 #### Alternative: ZIP Deployment
 
-1. Create a ZIP file containing all project files
-2. Upload via Azure Portal:
-   - Go to your App Service
+1. **Create deployment package:**
+   ```bash
+   # Create ZIP file
+   zip -r app-deployment.zip . -x "*.git*" "*.pyc" "__pycache__/*"
+   ```
+
+2. **Deploy via Azure Portal:**
+   - Go to your App Service in Azure Portal
    - Navigate to Deployment Center
    - Choose "ZIP Deploy"
    - Upload your ZIP file
@@ -203,6 +348,180 @@ WEBSITES_PORT = 8501
 ```
 streamlit run app.py --server.port $PORT --server.address 0.0.0.0
 ```
+
+## 🤖 AI Model Configuration
+
+### Azure OpenAI API (Default)
+
+This application is configured to use **Azure OpenAI API** by default, which provides:
+
+- **GPT-4 and GPT-3.5 models** for text analysis
+- **Whisper API** for audio transcription
+- **Enterprise-grade security** and compliance
+- **High availability** and reliability
+
+#### Azure OpenAI Setup
+
+1. **Create Azure OpenAI Resource:**
+   - Go to [Azure Portal](https://portal.azure.com)
+   - Create a new "Azure OpenAI" resource
+   - Deploy GPT-4 and GPT-3.5-turbo models
+   - Note your endpoint and API key
+
+2. **Configure Environment Variables:**
+   ```bash
+   AZURE_OPENAI_API_KEY=your-azure-openai-api-key
+   AZURE_OPENAI_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
+   AZURE_OPENAI_API_VERSION=2024-12-01-preview
+   ```
+
+### Alternative LLM Providers
+
+If you prefer to use other AI models, you can modify the application to work with different providers:
+
+#### Option 1: OpenAI API (Direct)
+
+**Modify `llm.py`:**
+```python
+from openai import OpenAI
+
+# Replace Azure OpenAI client with direct OpenAI
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+# Update model names
+MODEL_NAME = "gpt-4"  # or "gpt-3.5-turbo"
+```
+
+**Environment Variables:**
+```bash
+OPENAI_API_KEY=your-openai-api-key
+```
+
+#### Option 2: Anthropic Claude
+
+**Install Claude SDK:**
+```bash
+pip install anthropic
+```
+
+**Modify `llm.py`:**
+```python
+import anthropic
+
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+def run_analysis_with_claude(text, country, classification):
+    response = client.messages.create(
+        model="claude-3-sonnet-20240229",
+        max_tokens=4000,
+        messages=[{
+            "role": "user",
+            "content": f"Analyze this UN speech: {text}"
+        }]
+    )
+    return response.content[0].text
+```
+
+**Environment Variables:**
+```bash
+ANTHROPIC_API_KEY=your-anthropic-api-key
+```
+
+#### Option 3: Google Gemini
+
+**Install Gemini SDK:**
+```bash
+pip install google-generativeai
+```
+
+**Modify `llm.py`:**
+```python
+import google.generativeai as genai
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-pro')
+
+def run_analysis_with_gemini(text, country, classification):
+    response = model.generate_content(f"Analyze this UN speech: {text}")
+    return response.text
+```
+
+**Environment Variables:**
+```bash
+GEMINI_API_KEY=your-gemini-api-key
+```
+
+#### Option 4: Local Models (Ollama)
+
+**Install Ollama:**
+```bash
+# Install Ollama
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Pull a model
+ollama pull llama2
+```
+
+**Modify `llm.py`:**
+```python
+import requests
+
+def run_analysis_with_ollama(text, country, classification):
+    response = requests.post('http://localhost:11434/api/generate',
+        json={
+            'model': 'llama2',
+            'prompt': f'Analyze this UN speech: {text}',
+            'stream': False
+        }
+    )
+    return response.json()['response']
+```
+
+#### Option 5: Hugging Face Transformers
+
+**Install Transformers:**
+```bash
+pip install transformers torch
+```
+
+**Modify `llm.py`:**
+```python
+from transformers import pipeline
+
+# Load a text generation model
+generator = pipeline('text-generation', model='microsoft/DialoGPT-medium')
+
+def run_analysis_with_hf(text, country, classification):
+    response = generator(f"Analyze this UN speech: {text}", max_length=1000)
+    return response[0]['generated_text']
+```
+
+### Model Comparison
+
+| Provider | Model | Cost | Quality | Speed | Best For |
+|----------|-------|------|---------|-------|----------|
+| Azure OpenAI | GPT-4 | High | Excellent | Fast | Production |
+| OpenAI | GPT-4 | High | Excellent | Fast | Production |
+| Anthropic | Claude-3 | Medium | Excellent | Medium | Research |
+| Google | Gemini Pro | Medium | Good | Fast | Budget |
+| Ollama | Llama2 | Free | Good | Slow | Local/Privacy |
+| Hugging Face | Various | Free | Variable | Variable | Experimentation |
+
+### Switching Between Models
+
+To switch between different AI providers:
+
+1. **Update environment variables** with your chosen provider's credentials
+2. **Modify `llm.py`** to use the new client and model
+3. **Update prompts** if needed for model-specific formatting
+4. **Test thoroughly** to ensure compatibility
+
+### Recommended Configuration
+
+- **Production**: Azure OpenAI or OpenAI API
+- **Development**: Local Ollama or Hugging Face models
+- **Research**: Anthropic Claude for complex analysis
+- **Budget-conscious**: Google Gemini or local models
 
 ## Usage
 

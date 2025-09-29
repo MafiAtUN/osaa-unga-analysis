@@ -83,3 +83,4 @@ def is_african_member_state(country: str) -> bool:
 def get_au_members() -> set:
     """Get the set of AU member states."""
     return AU_MEMBERS.copy()
+

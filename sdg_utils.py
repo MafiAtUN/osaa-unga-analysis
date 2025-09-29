@@ -216,3 +216,4 @@ def get_sdg_descriptions() -> dict:
         16: "Peace, Justice and Strong Institutions",
         17: "Partnerships for the Goals"
     }
+

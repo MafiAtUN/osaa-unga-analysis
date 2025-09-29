@@ -1129,11 +1129,24 @@ def process_and_show_text(uploaded_file, pasted_text, show_ui=True):
                                 whisper_client
                             )
                     else:
-                        text_to_preview = extract_text_from_file(
-                            uploaded_file.getvalue(), 
-                            uploaded_file.name, 
-                            client
-                        )
+                        # Add loading UI for PDF and Word documents
+                        if show_ui:
+                            file_type = "PDF" if uploaded_file.name.lower().endswith('.pdf') else "Word Document"
+                            st.info(f"📄 **{file_type} Detected** - Extracting text...")
+                            
+                            # Create loading spinner
+                            with st.spinner(f"📖 Reading {file_type.lower()} content... (This may take a few seconds)"):
+                                text_to_preview = extract_text_from_file(
+                                    uploaded_file.getvalue(), 
+                                    uploaded_file.name, 
+                                    client
+                                )
+                        else:
+                            text_to_preview = extract_text_from_file(
+                                uploaded_file.getvalue(), 
+                                uploaded_file.name, 
+                                client
+                            )
                     
                     if text_to_preview:
                         if show_ui:
@@ -1332,24 +1345,63 @@ def render_analysis_section(country, speech_date, classification, uploaded_file,
                 suggestion_questions = get_suggestion_questions(analysis['country'], analysis['classification'])
                 
                 # Create dropdown for suggested questions
+                st.markdown("**💡 Choose a suggested question or write your own:**")
+                
                 selected_suggestion = st.selectbox(
-                    "Choose a suggested question:",
+                    "Select a suggested question:",
                     options=[""] + suggestion_questions,
-                    help="Select a question from the dropdown to automatically populate the chat input",
+                    help="Choose a question from the list or write your own below",
                     key="suggestion_dropdown_main"
                 )
                 
-                # Update session state when suggestion is selected
-                if selected_suggestion and selected_suggestion != "":
-                    st.session_state.selected_question = selected_suggestion
+                # Button to ask the selected question
+                col_suggest, col_custom = st.columns([1, 1])
                 
-                # Chat input with pre-populated question
+                with col_suggest:
+                    if st.button("🤖 Ask Selected Question", type="primary", use_container_width=True, disabled=not selected_suggestion):
+                        if selected_suggestion:
+                            # Process the selected question directly
+                            with st.spinner("🧠 AI is thinking about your question..."):
+                                # Get the full analysis context
+                                analysis_context = analysis['output_markdown']
+                                
+                                # Process the selected question
+                                chat_response, error = process_chat_question(
+                                    selected_suggestion, 
+                                    analysis_context, 
+                                    analysis['country'], 
+                                    analysis['classification']
+                                )
+                                
+                                if chat_response:
+                                    # Add to chat history
+                                    st.session_state.chat_history.append({
+                                        'question': selected_suggestion,
+                                        'answer': chat_response,
+                                        'timestamp': datetime.now().strftime('%H:%M:%S')
+                                    })
+                                    st.success("✅ Response generated!")
+                                    
+                                    # Show the answer immediately
+                                    st.markdown("### 🤖 AI Response")
+                                    st.markdown(chat_response)
+                                    
+                                    # Clear the selected question
+                                    st.session_state.selected_question = ""
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Error: {error}")
+                
+                with col_custom:
+                    st.markdown("**Or write your own question:**")
+                
+                # Chat input for custom questions
                 chat_question = st.text_area(
-                    "Ask a question about the analysis:",
+                    "Write your own question:",
                     value=st.session_state.get('selected_question', ''),
-                    placeholder="e.g., What specific SDGs were mentioned? What were the main challenges discussed?",
+                    placeholder="Type your question here...",
                     height=100,
-                    help="Ask detailed questions about the speech analysis",
+                    help="Write any question about the analysis",
                     key="chat_input_main"
                 )
                 
@@ -1436,6 +1488,17 @@ def render_new_analysis_tab():
                 st.session_state.stored_text = pasted_text
                 st.success("✅ Text stored!")
             elif uploaded_file:
+                # Show immediate feedback for file processing
+                file_extension = uploaded_file.name.lower().split('.')[-1]
+                if file_extension in ['mp3', 'wav', 'm4a']:
+                    st.info("🎤 **Audio file detected** - Starting transcription process...")
+                elif file_extension == 'pdf':
+                    st.info("📄 **PDF file detected** - Extracting text content...")
+                elif file_extension in ['docx', 'doc']:
+                    st.info("📝 **Word document detected** - Reading document content...")
+                else:
+                    st.info(f"📁 **{file_extension.upper()} file detected** - Processing content...")
+                
                 st.session_state.stored_file = uploaded_file
                 st.success("✅ File stored!")
             else:
@@ -1637,24 +1700,63 @@ def render_all_analyses_tab():
                 suggestion_questions = get_suggestion_questions(analysis['country'], analysis['classification'])
                 
                 # Create dropdown for suggested questions
+                st.markdown("**💡 Choose a suggested question or write your own:**")
+                
                 selected_suggestion = st.selectbox(
-                    "Choose a suggested question:",
+                    "Select a suggested question:",
                     options=[""] + suggestion_questions,
-                    help="Select a question from the dropdown to automatically populate the chat input",
+                    help="Choose a question from the list or write your own below",
                     key=f"suggestion_dropdown_{analysis_id}"
                 )
                 
-                # Update session state when suggestion is selected
-                if selected_suggestion and selected_suggestion != "":
-                    st.session_state[selected_question_key] = selected_suggestion
+                # Button to ask the selected question
+                col_suggest, col_custom = st.columns([1, 1])
                 
-                # Chat input with pre-populated question
+                with col_suggest:
+                    if st.button("🤖 Ask Selected Question", type="primary", use_container_width=True, disabled=not selected_suggestion, key=f"ask_selected_{analysis_id}"):
+                        if selected_suggestion:
+                            # Process the selected question directly
+                            with st.spinner("🧠 AI is thinking about your question..."):
+                                # Get the full analysis context
+                                analysis_context = analysis['output_markdown']
+                                
+                                # Process the selected question
+                                chat_response, error = process_chat_question(
+                                    selected_suggestion, 
+                                    analysis_context, 
+                                    analysis['country'], 
+                                    analysis['classification']
+                                )
+                                
+                                if chat_response:
+                                    # Add to chat history
+                                    st.session_state[chat_key].append({
+                                        'question': selected_suggestion,
+                                        'answer': chat_response,
+                                        'timestamp': datetime.now().strftime('%H:%M:%S')
+                                    })
+                                    st.success("✅ Response generated!")
+                                    
+                                    # Show the answer immediately
+                                    st.markdown("### 🤖 AI Response")
+                                    st.markdown(chat_response)
+                                    
+                                    # Clear the selected question
+                                    st.session_state[selected_question_key] = ""
+                                    st.rerun()
+                                else:
+                                    st.error(f"❌ Error: {error}")
+                
+                with col_custom:
+                    st.markdown("**Or write your own question:**")
+                
+                # Chat input for custom questions
                 chat_question = st.text_area(
-                    "Ask a question about the analysis:",
-                    value=st.session_state[selected_question_key],
-                    placeholder="e.g., What specific SDGs were mentioned? What were the main challenges discussed?",
+                    "Write your own question:",
+                    value=st.session_state.get(selected_question_key, ''),
+                    placeholder="Type your question here...",
                     height=100,
-                    help="Ask detailed questions about the speech analysis",
+                    help="Write any question about the analysis",
                     key=f"chat_input_{analysis_id}"
                 )
                 
