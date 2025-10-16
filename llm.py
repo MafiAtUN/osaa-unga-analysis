@@ -87,7 +87,7 @@ def run_analysis(system_msg: str, user_msg: str, model: str = "gpt-4o",
                 model=model,
                 messages=messages,
                 temperature=0.1,  # Low temperature for consistent output
-                max_tokens=4000,  # Reasonable limit for analysis output
+                max_tokens=6000,  # Increased limit for comprehensive analysis output
                 top_p=0.9
             )
             

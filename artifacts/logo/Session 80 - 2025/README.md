@@ -1,0 +1,173 @@
+# All English Speeches - UNGA 80
+
+**Total Speeches:** 156
+**Original English:** 116
+**Translated to English:** 40
+**Total Size:** 2.69 MB
+
+## File Naming Convention
+
+`{ISO3}_80_2025.txt`
+
+- ISO3: Three-letter country code
+- 80: UN General Assembly session number
+- 2025: Year
+
+## Files
+
+- `AGO_80_2025.txt` - 18.1 KB
+- `ALB_80_2025.txt` - 11.5 KB
+- `ARE_80_2025.txt` - 9.5 KB
+- `ARG_80_2025.txt` - 72.0 KB
+- `ATG_80_2025.txt` - 13.3 KB
+- `AUS_80_2025.txt` - 0.1 KB
+- `AUT_80_2025.txt` - 32.9 KB
+- `AZE_80_2025.txt` - 12.5 KB
+- `BDI_80_2025.txt` - 10.7 KB
+- `BEL_80_2025.txt` - 6.0 KB
+- `BEN_80_2025.txt` - 13.0 KB
+- `BFA_80_2025.txt` - 16.8 KB
+- `BGR_80_2025.txt` - 11.5 KB
+- `BHR_80_2025.txt` - 12.9 KB
+- `BHS_80_2025.txt` - 13.2 KB
+- `BLR_80_2025.txt` - 30.7 KB
+- `BLZ_80_2025.txt` - 12.7 KB
+- `BRB_80_2025.txt` - 24.9 KB
+- `BRN_80_2025.txt` - 9.5 KB
+- `BTN_80_2025.txt` - 11.0 KB
+- `BWA_80_2025.txt` - 6.2 KB
+- `CAF_80_2025.txt` - 13.7 KB
+- `CHE_80_2025.txt` - 31.8 KB
+- `CHL_80_2025.txt` - 14.9 KB
+- `CHN_80_2025.txt` - 62.5 KB
+- `CIV_80_2025.txt` - 3.6 KB
+- `CMR_80_2025.txt` - 11.4 KB
+- `COD_80_2025.txt` - 21.2 KB
+- `COG_80_2025.txt` - 9.2 KB
+- `COM_80_2025.txt` - 10.8 KB
+- `CPV_80_2025.txt` - 7.4 KB
+- `CUB_80_2025.txt` - 17.9 KB
+- `CYP_80_2025.txt` - 10.2 KB
+- `CZE_80_2025.txt` - 8.0 KB
+- `DMA_80_2025.txt` - 12.3 KB
+- `DNK_80_2025.txt` - 9.2 KB
+- `DOM_80_2025.txt` - 9.5 KB
+- `DZA_80_2025.txt` - 29.8 KB
+- `ECU_80_2025.txt` - 11.1 KB
+- `EGY_80_2025.txt` - 24.5 KB
+- `ERI_80_2025.txt` - 7.1 KB
+- `EST_80_2025.txt` - 12.7 KB
+- `FIN_80_2025.txt` - 13.7 KB
+- `FJI_80_2025.txt` - 19.6 KB
+- `FRA_80_2025.txt` - 23.8 KB
+- `FSM_80_2025.txt` - 14.8 KB
+- `GAB_80_2025.txt` - 8.3 KB
+- `GBR_80_2025.txt` - 50.0 KB
+- `GEO_80_2025.txt` - 9.5 KB
+- `GIN_80_2025.txt` - 7.9 KB
+- `GMB_80_2025.txt` - 19.6 KB
+- `GNB_80_2025.txt` - 6.2 KB
+- `GNQ_80_2025.txt` - 6.9 KB
+- `GRC_80_2025.txt` - 19.9 KB
+- `GTM_80_2025.txt` - 15.4 KB
+- `GUY_80_2025.txt` - 14.6 KB
+- `HRV_80_2025.txt` - 12.3 KB
+- `IDN_80_2025.txt` - 9.2 KB
+- `IND_80_2025.txt` - 43.7 KB
+- `IRL_80_2025.txt` - 15.6 KB
+- `IRQ_80_2025.txt` - 20.7 KB
+- `ISL_80_2025.txt` - 45.3 KB
+- `ISR_80_2025.txt` - 11.8 KB
+- `ITA_80_2025.txt` - 62.3 KB
+- `JAM_80_2025.txt` - 9.7 KB
+- `JOR_80_2025.txt` - 7.8 KB
+- `JPN_80_2025.txt` - 80.7 KB
+- `KAZ_80_2025.txt` - 16.1 KB
+- `KEN_80_2025.txt` - 21.8 KB
+- `KGZ_80_2025.txt` - 18.4 KB
+- `KIR_80_2025.txt` - 9.3 KB
+- `KNA_80_2025.txt` - 20.2 KB
+- `KOR_80_2025.txt` - 15.3 KB
+- `LBN_80_2025.txt` - 14.8 KB
+- `LBR_80_2025.txt` - 9.8 KB
+- `LBY_80_2025.txt` - 9.4 KB
+- `LCA_80_2025.txt` - 19.8 KB
+- `LKA_80_2025.txt` - 13.3 KB
+- `LSO_80_2025.txt` - 14.1 KB
+- `LTU_80_2025.txt` - 42.7 KB
+- `LUX_80_2025.txt` - 6.2 KB
+- `LVA_80_2025.txt` - 0.2 KB
+- `MDA_80_2025.txt` - 5.5 KB
+- `MDG_80_2025.txt` - 16.0 KB
+- `MDV_80_2025.txt` - 11.5 KB
+- `MEX_80_2025.txt` - 10.4 KB
+- `MHL_80_2025.txt` - 11.7 KB
+- `MKD_80_2025.txt` - 60.3 KB
+- `MLI_80_2025.txt` - 22.8 KB
+- `MLT_80_2025.txt` - 20.0 KB
+- `MNG_80_2025.txt` - 17.1 KB
+- `MRT_80_2025.txt` - 14.2 KB
+- `MUS_80_2025.txt` - 11.7 KB
+- `MWI_80_2025.txt` - 13.4 KB
+- `MYS_80_2025.txt` - 9.3 KB
+- `NAM_80_2025.txt` - 11.5 KB
+- `NER_80_2025.txt` - 21.5 KB
+- `NGA_80_2025.txt` - 15.9 KB
+- `NIC_80_2025.txt` - 9.2 KB
+- `NLD_80_2025.txt` - 9.5 KB
+- `NOR_80_2025.txt` - 51.9 KB
+- `NPL_80_2025.txt` - 15.2 KB
+- `NRU_80_2025.txt` - 11.2 KB
+- `NZL_80_2025.txt` - 11.3 KB
+- `PAK_80_2025.txt` - 14.1 KB
+- `PAN_80_2025.txt` - 10.2 KB
+- `PER_80_2025.txt` - 12.8 KB
+- `PHL_80_2025.txt` - 14.2 KB
+- `PLW_80_2025.txt` - 8.4 KB
+- `PNG_80_2025.txt` - 4.6 KB
+- `POL_80_2025.txt` - 64.6 KB
+- `PRK_80_2025.txt` - 11.9 KB
+- `PRT_80_2025.txt` - 12.8 KB
+- `PRY_80_2025.txt` - 20.3 KB
+- `PSE_80_2025.txt` - 11.5 KB
+- `QAT_80_2025.txt` - 8.3 KB
+- `ROU_80_2025.txt` - 12.6 KB
+- `RUS_80_2025.txt` - 29.0 KB
+- `RWA_80_2025.txt` - 11.7 KB
+- `SAU_80_2025.txt` - 23.0 KB
+- `SDN_80_2025.txt` - 13.9 KB
+- `SEN_80_2025.txt` - 8.2 KB
+- `SGP_80_2025.txt` - 13.3 KB
+- `SLB_80_2025.txt` - 22.3 KB
+- `SLE_80_2025.txt` - 11.1 KB
+- `SMR_80_2025.txt` - 19.1 KB
+- `SOM_80_2025.txt` - 13.0 KB
+- `SRB_80_2025.txt` - 21.7 KB
+- `SUR_80_2025.txt` - 14.3 KB
+- `SVN_80_2025.txt` - 11.1 KB
+- `SWE_80_2025.txt` - 42.6 KB
+- `SWZ_80_2025.txt` - 11.8 KB
+- `SYR_80_2025.txt` - 8.4 KB
+- `THA_80_2025.txt` - 16.0 KB
+- `TJK_80_2025.txt` - 10.8 KB
+- `TKM_80_2025.txt` - 3.7 KB
+- `TLS_80_2025.txt` - 18.4 KB
+- `TON_80_2025.txt` - 13.9 KB
+- `TTO_80_2025.txt` - 12.4 KB
+- `TUN_80_2025.txt` - 36.2 KB
+- `TUV_80_2025.txt` - 21.1 KB
+- `TZA_80_2025.txt` - 10.8 KB
+- `UGA_80_2025.txt` - 9.9 KB
+- `UKR_80_2025.txt` - 50.4 KB
+- `URY_80_2025.txt` - 45.6 KB
+- `UZB_80_2025.txt` - 10.9 KB
+- `VAT_80_2025.txt` - 48.5 KB
+- `VCT_80_2025.txt` - 21.8 KB
+- `VEN_80_2025.txt` - 10.4 KB
+- `VNM_80_2025.txt` - 10.4 KB
+- `VUT_80_2025.txt` - 10.3 KB
+- `WSM_80_2025.txt` - 12.5 KB
+- `YEM_80_2025.txt` - 11.3 KB
+- `ZAF_80_2025.txt` - 11.0 KB
+- `ZMB_80_2025.txt` - 14.3 KB
+- `ZWE_80_2025.txt` - 12.7 KB
