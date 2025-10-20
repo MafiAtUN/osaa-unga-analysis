@@ -26,17 +26,17 @@ from collections import defaultdict
 # Load environment variables from .env file
 load_dotenv()
 
-# Import our modules
-from prompts import SYSTEM_MESSAGE, build_user_prompt, get_question_set, build_chat_prompt
-from classify import infer_classification, get_au_members
-from ingest import extract_text_from_file, validate_text_length
-from llm import run_analysis, get_available_models, OpenAIError, chunk_and_synthesize
-from simple_vector_storage import simple_vector_storage as db_manager
-from sdg_utils import extract_sdgs, detect_africa_mention, format_sdgs
-from export_utils import create_export_files, format_filename
-from data_ingestion import data_ingestion_manager
-from cross_year_analysis import cross_year_manager
-from visualization import (
+# Import our modules from the new package structure
+from src.unga_analysis.core.prompts import SYSTEM_MESSAGE, build_user_prompt, get_question_set, build_chat_prompt
+from src.unga_analysis.core.classify import infer_classification, get_au_members
+from src.unga_analysis.data.ingest import extract_text_from_file, validate_text_length
+from src.unga_analysis.core.llm import run_analysis, get_available_models, OpenAIError, chunk_and_synthesize
+from src.unga_analysis.data.simple_vector_storage import simple_vector_storage as db_manager
+from src.unga_analysis.utils.sdg_utils import extract_sdgs, detect_africa_mention, format_sdgs
+from src.unga_analysis.utils.export_utils import create_export_files, format_filename
+from src.unga_analysis.data.data_ingestion import data_ingestion_manager
+from src.unga_analysis.data.cross_year_analysis import cross_year_manager
+from src.unga_analysis.utils.visualization import (
     create_region_distribution_chart,
     create_word_count_heatmap,
     create_au_members_chart,
@@ -2981,7 +2981,6 @@ def render_visualizations_tab():
     
     # Render the visualization menu
     viz_manager.render_visualization_menu()
-
 
 def main():
     """Main application function."""

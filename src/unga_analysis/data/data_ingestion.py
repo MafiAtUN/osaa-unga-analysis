@@ -9,8 +9,8 @@ from typing import Dict, List, Optional, Tuple
 from pathlib import Path
 import re
 
-from simple_vector_storage import simple_vector_storage as db_manager
-from classify import get_au_members
+from .simple_vector_storage import simple_vector_storage as db_manager
+from ..core.classify import get_au_members
 
 logger = logging.getLogger(__name__)
 

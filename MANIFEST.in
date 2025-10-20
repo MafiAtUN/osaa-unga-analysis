@@ -1,0 +1,17 @@
+include README.md
+include LICENSE
+include SECURITY.md
+include requirements.txt
+include pyproject.toml
+recursive-include src/unga_analysis *.py
+recursive-include docs *.md *.rst
+recursive-include scripts *.sh *.py
+recursive-include tests *.py
+include artifacts/logo/*.svg
+include logo.svg
+include web.config
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
+recursive-exclude venv *
+recursive-exclude .git *
