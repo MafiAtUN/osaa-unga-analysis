@@ -291,15 +291,26 @@ class SimpleVectorStorageManager:
             
             where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
             
-            # Execute search
-            result = self.conn.execute(f"""
-                SELECT id, country_code, country_name, region, session, year, 
-                       speech_text, word_count, source_filename, is_african_member, created_at
-                FROM speeches 
-                WHERE {where_clause}
-                ORDER BY year ASC, country_name
-                LIMIT ?
-            """, params + [limit]).fetchall()
+            # Execute search with better distribution across years
+            # For comprehensive analysis, we want to ensure good coverage
+            if limit > 1000:  # For large limits, use a more systematic approach
+                result = self.conn.execute(f"""
+                    SELECT id, country_code, country_name, region, session, year, 
+                           speech_text, word_count, source_filename, is_african_member, created_at
+                    FROM speeches 
+                    WHERE {where_clause}
+                    ORDER BY year DESC, country_name
+                    LIMIT ?
+                """, params + [limit]).fetchall()
+            else:  # For smaller limits, use random for variety
+                result = self.conn.execute(f"""
+                    SELECT id, country_code, country_name, region, session, year, 
+                           speech_text, word_count, source_filename, is_african_member, created_at
+                    FROM speeches 
+                    WHERE {where_clause}
+                    ORDER BY RANDOM()
+                    LIMIT ?
+                """, params + [limit]).fetchall()
             
             # Convert to list of dictionaries
             results = []
@@ -344,6 +355,9 @@ class SimpleVectorStorageManager:
             # Generate embedding for query
             query_embedding = self.generate_embedding(query_text)
             
+            # Ensure the query embedding is the same type as stored embeddings (tuple of floats)
+            query_embedding = tuple(float(x) for x in query_embedding)
+            
             # Build where conditions for filters
             where_conditions = []
             params = []
@@ -370,16 +384,16 @@ class SimpleVectorStorageManager:
             where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
             
             # Perform vector similarity search using cosine similarity
-            # DuckDB doesn't have built-in cosine similarity, so we'll calculate it manually
+            # Use a simpler approach with DuckDB's built-in functions
             result = self.conn.execute(f"""
                 SELECT id, country_code, country_name, region, session, year, 
                        speech_text, word_count, source_filename, is_african_member, created_at,
-                       array_cosine_similarity(embedding, ?) as similarity
+                       array_cosine_similarity(embedding, ?::FLOAT[]) as similarity
                 FROM speeches 
                 WHERE {where_clause} AND embedding IS NOT NULL
                 ORDER BY similarity DESC
                 LIMIT ?
-            """, [query_embedding] + params + [limit]).fetchall()
+            """, [str(query_embedding)] + params + [limit]).fetchall()
             
             # Convert to list of dictionaries
             results = []

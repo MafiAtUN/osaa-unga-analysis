@@ -124,3 +124,6 @@ docker-compose.yml
 Dockerfile
 azure-deploy.sh
 requirements-azure.txt
+
+# Pre-commit
+.pre-commit-config.yaml.bak

@@ -658,20 +658,3 @@ def render_text_analysis_interface():
                 st.session_state.analysis_prompt = selected_question
                 st.rerun()
     
-    # Data availability info
-    if data_summary:
-        st.subheader("📊 Data Availability")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("🗣️ Total Countries", data_summary.get('total_countries', 0))
-        with col2:
-            st.metric("📝 Total Speeches", data_summary.get('total_speeches', 0))
-        with col3:
-            st.metric("📅 Available Years", data_summary.get('total_years', 0))
-        with col4:
-            # Count AU members from all years
-            au_count = 0
-            for year_stats in data_summary.get('year_statistics', {}).values():
-                if isinstance(year_stats, dict) and 'au_members' in year_stats:
-                    au_count += year_stats['au_members']
-            st.metric("🇦🇺 AU Members", au_count)

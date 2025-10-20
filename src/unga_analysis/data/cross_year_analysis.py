@@ -8,9 +8,9 @@ from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
 import re
 
-from simple_vector_storage import simple_vector_storage as db_manager
-from data_ingestion import data_ingestion_manager
-from llm import run_analysis, get_available_models
+from .simple_vector_storage import simple_vector_storage as db_manager
+from .data_ingestion import data_ingestion_manager
+from ..core.llm import run_analysis, get_available_models
 from openai import AzureOpenAI
 import os
 
@@ -56,7 +56,7 @@ class CrossYearAnalysisManager:
                                   african_members_only: bool = False,
                                   use_semantic_search: bool = False) -> List[Dict[str, Any]]:
         """
-        Search speeches by multiple criteria using semantic search.
+        Search speeches by multiple criteria with comprehensive coverage.
         
         Args:
             query_text: Text to search for in speeches (semantic search)
@@ -67,20 +67,24 @@ class CrossYearAnalysisManager:
             use_semantic_search: If True, use vector similarity search
             
         Returns:
-            List of matching speeches with similarity scores
+            List of matching speeches with comprehensive coverage
         """
         try:
-            # Try semantic search first, fall back to traditional search if it fails
+            # For comprehensive analysis, we need to ensure we get ALL relevant speeches
+            # Use a multi-step approach to get complete coverage
+            
             speeches = []
+            
+            # Step 1: Try to get comprehensive results with high limit
             if use_semantic_search:
                 try:
                     # Use semantic search for better results
                     speeches = self.db_manager.semantic_search(
-                        query_text=query_text or "general speech content",  # Provide default query if none
+                        query_text=query_text or "general speech content",
                         countries=countries,
                         years=years,
                         regions=regions,
-                        limit=100  # Increase limit to get more speeches
+                        limit=5000  # Much higher limit for comprehensive coverage
                     )
                 except Exception as e:
                     logger.warning(f"Semantic search failed: {e}")
@@ -90,22 +94,83 @@ class CrossYearAnalysisManager:
                         countries=countries,
                         years=years,
                         regions=regions,
-                        limit=100  # Increase limit
+                        limit=5000  # Much higher limit
                     )
             else:
-                # Use traditional text search
+                # Use traditional text search with high limit
                 speeches = self.db_manager.search_speeches(
                     query_text=query_text,
                     countries=countries,
                     years=years,
                     regions=regions,
-                    limit=100  # Increase limit
+                    limit=5000  # Much higher limit for comprehensive coverage
                 )
+            
+            # Step 2: If we have specific countries, ensure we get ALL their speeches
+            if countries and len(speeches) < 100:  # If we got very few results
+                logger.info(f"Got only {len(speeches)} speeches, trying comprehensive search for countries: {countries}")
+                
+                # Try without year/region filters to get all speeches for these countries
+                all_country_speeches = self.db_manager.search_speeches(
+                    countries=countries,
+                    limit=10000  # Get all speeches for these countries
+                )
+                
+                # Filter by years and regions if specified
+                if years or regions:
+                    filtered_speeches = []
+                    for speech in all_country_speeches:
+                        include = True
+                        if years and speech.get('year') not in years:
+                            include = False
+                        if regions and speech.get('region') not in regions:
+                            include = False
+                        if include:
+                            filtered_speeches.append(speech)
+                    all_country_speeches = filtered_speeches
+                
+                # Use the comprehensive results if we got more
+                if len(all_country_speeches) > len(speeches):
+                    speeches = all_country_speeches
+                    logger.info(f"Comprehensive search found {len(speeches)} speeches")
+            
+            # Step 3: If we have specific years, ensure we get good coverage across years
+            if years and len(years) > 10:  # For large year ranges
+                # Group speeches by year to check coverage
+                year_coverage = {}
+                for speech in speeches:
+                    year = speech.get('year')
+                    if year in years:
+                        if year not in year_coverage:
+                            year_coverage[year] = []
+                        year_coverage[year].append(speech)
+                
+                # If we're missing many years, try to get more comprehensive results
+                missing_years = [year for year in years if year not in year_coverage or len(year_coverage[year]) < 2]
+                if len(missing_years) > len(years) * 0.3:  # If missing more than 30% of years
+                    logger.info(f"Missing coverage for {len(missing_years)} years, trying broader search")
+                    
+                    # Try a broader search without country filters
+                    broader_speeches = self.db_manager.search_speeches(
+                        years=years,
+                        regions=regions,
+                        limit=10000
+                    )
+                    
+                    # Filter by countries if specified
+                    if countries:
+                        broader_speeches = [s for s in broader_speeches if s.get('country_name') in countries or s.get('country_code') in countries]
+                    
+                    # Use broader results if we got better coverage
+                    if len(broader_speeches) > len(speeches):
+                        speeches = broader_speeches
+                        logger.info(f"Broader search found {len(speeches)} speeches with better year coverage")
             
             # Filter by African members if requested
             if african_members_only:
                 speeches = [s for s in speeches if s.get('is_african_member', False)]
             
+            logger.info(f"Final search result: {len(speeches)} speeches")
             return speeches
             
         except Exception as e:
@@ -139,6 +204,152 @@ class CrossYearAnalysisManager:
             logger.error(f"Failed to get historical speeches for {country_name}: {e}")
             return []
     
+    def search_by_text_content(self, query_text: str, years: List[int] = None, 
+                             regions: List[str] = None, limit: int = 10000) -> List[Dict[str, Any]]:
+        """
+        Search for speeches containing specific text content across all countries.
+        This is essential for questions like "how many countries mentioned CEDAW".
+        """
+        try:
+            logger.info(f"Searching for text '{query_text}' across all speeches")
+            
+            # Search for speeches containing the query text
+            speeches = self.db_manager.search_speeches(
+                query_text=query_text,
+                years=years,
+                regions=regions,
+                limit=limit
+            )
+            
+            logger.info(f"Found {len(speeches)} speeches containing '{query_text}'")
+            return speeches
+            
+        except Exception as e:
+            logger.error(f"Failed to search by text content: {e}")
+            return []
+
+    def get_comprehensive_speeches(self, countries: List[str] = None, 
+                                 years: List[int] = None, regions: List[str] = None) -> List[Dict[str, Any]]:
+        """
+        Get comprehensive speech data ensuring complete coverage for analysis.
+        This function prioritizes completeness over speed.
+        """
+        try:
+            all_speeches = []
+            
+            # If we have specific countries, get ALL their speeches
+            if countries:
+                for country in countries:
+                    logger.info(f"Getting all speeches for {country}")
+                    country_speeches = self.db_manager.search_speeches(
+                        countries=[country],
+                        limit=10000  # Get all speeches for this country
+                    )
+                    
+                    # Filter by years and regions if specified
+                    if years or regions:
+                        filtered_speeches = []
+                        for speech in country_speeches:
+                            include = True
+                            if years and speech.get('year') not in years:
+                                include = False
+                            if regions and speech.get('region') not in regions:
+                                include = False
+                            if include:
+                                filtered_speeches.append(speech)
+                        country_speeches = filtered_speeches
+                    
+                    all_speeches.extend(country_speeches)
+                    logger.info(f"Found {len(country_speeches)} speeches for {country}")
+            
+            # If we have specific years but no countries, get comprehensive year coverage
+            elif years:
+                logger.info(f"Getting comprehensive coverage for years {min(years)}-{max(years)}")
+                all_speeches = self.db_manager.search_speeches(
+                    years=years,
+                    regions=regions,
+                    limit=10000
+                )
+            
+            # If we have regions but no countries, get comprehensive regional coverage
+            elif regions:
+                logger.info(f"Getting comprehensive coverage for regions: {regions}")
+                all_speeches = self.db_manager.search_speeches(
+                    regions=regions,
+                    limit=10000
+                )
+            
+            # Remove duplicates based on speech ID
+            seen_ids = set()
+            unique_speeches = []
+            for speech in all_speeches:
+                speech_id = speech.get('id')
+                if speech_id not in seen_ids:
+                    seen_ids.add(speech_id)
+                    unique_speeches.append(speech)
+            
+            logger.info(f"Comprehensive search found {len(unique_speeches)} unique speeches")
+            return unique_speeches
+            
+        except Exception as e:
+            logger.error(f"Failed to get comprehensive speeches: {e}")
+            return []
+
+    def get_speeches_for_analysis(self, query: str, countries: List[str] = None,
+                                 years: List[int] = None, regions: List[str] = None) -> List[Dict[str, Any]]:
+        """
+        Smart function to determine the best search strategy based on the query type.
+        """
+        try:
+            query_lower = query.lower()
+            
+            # Check if this is a text content search (e.g., "countries mentioned CEDAW")
+            text_search_indicators = [
+                'mentioned', 'mentioned by', 'countries that mentioned', 'speeches containing',
+                'how many countries', 'which countries', 'countries that said',
+                'references to', 'mentions of', 'discussed', 'talked about'
+            ]
+            
+            # Check if query contains specific terms to search for
+            search_terms = []
+            for indicator in text_search_indicators:
+                if indicator in query_lower:
+                    # Extract potential search terms from the query
+                    # Look for capitalized terms that might be what we're searching for
+                    import re
+                    capitalized_terms = re.findall(r'\b[A-Z][A-Z\s]+\b', query)
+                    search_terms.extend(capitalized_terms)
+                    break
+            
+            # If we found search terms, use text content search
+            if search_terms:
+                # Use the first search term found
+                search_term = search_terms[0].strip()
+                logger.info(f"Detected text content search for: '{search_term}'")
+                return self.search_by_text_content(
+                    query_text=search_term,
+                    years=years,
+                    regions=regions
+                )
+            
+            # Otherwise, use comprehensive country/year search
+            else:
+                logger.info("Using comprehensive country/year search")
+                return self.get_comprehensive_speeches(
+                    countries=countries,
+                    years=years,
+                    regions=regions
+                )
+                
+        except Exception as e:
+            logger.error(f"Failed to determine search strategy: {e}")
+            # Fallback to comprehensive search
+            return self.get_comprehensive_speeches(
+                countries=countries,
+                years=years,
+                regions=regions
+            )
+
     def analyze_cross_year_trends(self, query: str, countries: List[str] = None,
                                 years: List[int] = None, regions: List[str] = None) -> str:
         """
@@ -154,8 +365,9 @@ class CrossYearAnalysisManager:
             Analysis result as markdown
         """
         try:
-            # Get relevant speeches
-            speeches = self.search_speeches_by_criteria(
+            # Use smart search strategy based on query type
+            speeches = self.get_speeches_for_analysis(
+                query=query,
                 countries=countries,
                 years=years,
                 regions=regions
@@ -246,14 +458,33 @@ class CrossYearAnalysisManager:
             Analysis result as markdown
         """
         try:
-            # Use semantic search to find relevant speeches
-            speeches = self.search_speeches_by_criteria(
-                query_text=theme_query,
+            # Use smart search strategy based on query type
+            speeches = self.get_speeches_for_analysis(
+                query=theme_query,
                 countries=countries,
                 years=years,
-                regions=regions,
-                use_semantic_search=True
+                regions=regions
             )
+            
+            # If we have a theme query, filter speeches by relevance
+            if theme_query and speeches:
+                # For now, use text-based filtering for theme relevance
+                # This is more reliable than the broken semantic search
+                relevant_speeches = []
+                theme_terms = theme_query.lower().split()
+                
+                for speech in speeches:
+                    speech_text = speech.get('speech_text', '').lower()
+                    # Check if any theme terms appear in the speech
+                    if any(term in speech_text for term in theme_terms):
+                        relevant_speeches.append(speech)
+                
+                # If we found relevant speeches, use them; otherwise use all speeches
+                if relevant_speeches:
+                    speeches = relevant_speeches
+                    logger.info(f"Filtered to {len(speeches)} speeches relevant to theme: {theme_query}")
+                else:
+                    logger.info(f"No speeches found relevant to theme, using all {len(speeches)} speeches")
             
             if not speeches:
                 return f"❌ No speeches found related to '{theme_query}'."

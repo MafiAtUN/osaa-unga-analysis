@@ -17,6 +17,40 @@ from collections import Counter, defaultdict
 
 logger = logging.getLogger(__name__)
 
+def create_methodology_tooltip(methodology_text: str) -> str:
+    """Create a methodology tooltip that appears on hover."""
+    return f"""
+    <div style="position: relative; display: inline-block;">
+        <span style="color: #666; cursor: help; font-size: 0.8em;">ℹ️</span>
+        <div style="
+            visibility: hidden;
+            width: 300px;
+            background-color: #f9f9f9;
+            color: #333;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 0.85em;
+            line-height: 1.4;
+        ">
+            <strong>Methodology:</strong><br>
+            {methodology_text}
+        </div>
+    </div>
+    """
+
+def add_methodology_section(methodology_text: str):
+    """Add a collapsible methodology section."""
+    with st.expander("ℹ️ Methodology", expanded=False):
+        st.markdown(methodology_text)
+
 class UNGAVisualizationManager:
     """Manages all visualization components for UNGA speech analysis."""
     
@@ -598,6 +632,25 @@ class UNGAVisualizationManager:
             summary = data.groupby('topic')['mentions_per_1000_words'].agg(['mean', 'std', 'max']).round(2)
             st.dataframe(summary)
             
+            # Add methodology section
+            add_methodology_section("""
+            **Topic Salience Analysis Methodology:**
+            
+            • **Keyword Matching**: Each topic is identified using predefined keyword sets (e.g., "Climate Change" includes: climate, global warming, greenhouse, carbon, emissions, environment)
+            
+            • **Normalization**: Mentions are normalized per 1,000 words to account for varying speech lengths and ensure fair comparison across different time periods
+            
+            • **Data Aggregation**: Results are grouped by year and region to show temporal and geographical patterns
+            
+            • **Visualization Types**:
+              - **Multi-line Trends**: Shows individual topic trajectories over time
+              - **Stacked Area Chart**: Displays cumulative topic attention across years
+              - **Session Heatmap**: Visualizes topic intensity by year using color gradients
+              - **Regional Comparison**: Compares topic focus across different geographical regions
+            
+            • **Limitations**: Analysis relies on keyword matching and may not capture nuanced topic discussions or synonyms
+            """)
+            
         except Exception as e:
             st.error(f"Error creating issue salience chart: {e}")
             logger.error(f"Error in _create_issue_salience_chart: {e}")
@@ -657,6 +710,28 @@ class UNGAVisualizationManager:
             - **Red stars**: Countries you selected to highlight
             """)
             
+            # Add methodology section
+            add_methodology_section("""
+            **Country Position Map Methodology:**
+            
+            • **Data Source**: All speeches from the selected year with word count > 100 words
+            
+            • **Position Calculation**: Countries are positioned using mock 2D coordinates based on speech characteristics (Note: In production, this would use actual semantic embeddings from sentence-transformers)
+            
+            • **Regional Clustering**: Countries are grouped by geographic region with slight offsets to show regional patterns:
+              - Africa: (0.5, 0.3)
+              - Asia: (-0.3, 0.8) 
+              - Europe: (-0.8, -0.2)
+              - Americas: (0.2, -0.6)
+              - Oceania: (0.1, 0.1)
+            
+            • **Size Encoding**: Bubble size represents the number of speeches by each country in the selected year
+            
+            • **Filtering**: Only countries with at least 1 speech and >100 words are included (limited to top 50 countries by speech count)
+            
+            • **Limitations**: Current implementation uses mock coordinates; full semantic analysis would require actual embedding vectors from speech content
+            """)
+            
         except Exception as e:
             st.error(f"Error creating country position map: {e}")
             logger.error(f"Error in _create_country_position_map: {e}")
@@ -694,6 +769,33 @@ class UNGAVisualizationManager:
                 use_container_width=True
             )
             
+            # Add methodology section
+            add_methodology_section("""
+            **Similar Speech Finder Methodology:**
+            
+            • **Reference Speech**: Uses the first available speech from the selected country and year as the reference point
+            
+            • **Comparison Pool**: Searches speeches from other countries within ±2 years of the reference year (to capture contemporary context)
+            
+            • **Similarity Calculation**: Uses Jaccard similarity based on word overlap:
+              - Jaccard = |Intersection| / |Union| of word sets
+              - Converts speeches to lowercase word sets for comparison
+              - Filters results by similarity threshold (default: 0.7)
+            
+            • **Data Filtering**: 
+              - Excludes speeches with <100 words
+              - Limits comparison to 100 most recent speeches
+              - Only includes speeches with similarity ≥ threshold
+            
+            • **Visualization**: 
+              - X-axis: Year of comparison speech
+              - Y-axis: Similarity score (0-1)
+              - Size: Speech length (word count)
+              - Color: Geographic region
+            
+            • **Limitations**: Simple word overlap may not capture semantic similarity; advanced NLP techniques would provide better results
+            """)
+            
         except Exception as e:
             st.error(f"Error creating similar speech finder: {e}")
             logger.error(f"Error in _create_similar_speech_finder: {e}")
@@ -723,6 +825,38 @@ class UNGAVisualizationManager:
             # Add detailed breakdown
             st.markdown("#### Detailed Breakdown")
             st.dataframe(topic_data, use_container_width=True)
+            
+            # Add methodology section
+            add_methodology_section("""
+            **Topic Composition Analysis Methodology:**
+            
+            • **Data Source**: All speeches from the selected country and year with word count > 100 words
+            
+            • **Topic Categories**: 10 predefined topic categories with associated keywords:
+              - Peace & Security: peace, security, conflict, war, terrorism, military, defense
+              - Development: development, poverty, economic, growth, sustainable development, aid
+              - Climate Change: climate, environment, global warming, carbon, emissions, green
+              - Human Rights: human rights, rights, freedom, democracy, justice, equality
+              - Gender Equality: gender, women, girls, empowerment, feminist, equality
+              - Health: health, medical, disease, pandemic, healthcare, medicine
+              - Education: education, school, learning, knowledge, training, university
+              - Trade: trade, commerce, economic, market, business, investment
+              - Technology: technology, digital, innovation, tech, artificial intelligence, ai
+              - Migration: migration, refugee, immigration, displacement, asylum
+            
+            • **Calculation Method**: 
+              - Combines all speeches for the country/year into a single text
+              - Counts keyword mentions in the combined text
+              - Calculates percentage as (mentions / total_words) × 100
+              - Only includes topics with >0.1% presence
+            
+            • **Visualization**: Donut chart showing relative topic focus, sorted by percentage (descending)
+            
+            • **Limitations**: 
+              - Relies on exact keyword matching (case-insensitive)
+              - May miss synonyms or related terms not in keyword lists
+              - Single year analysis may not capture long-term trends
+            """)
             
         except Exception as e:
             st.error(f"Error creating topic composition chart: {e}")
@@ -814,6 +948,34 @@ class UNGAVisualizationManager:
             else:
                 st.info("No significant keyword bursts detected.")
             
+            # Add methodology section
+            add_methodology_section("""
+            **Keyword Trajectory Analysis Methodology:**
+            
+            • **Data Source**: All speeches from the selected year range with word count > 0
+            
+            • **Keyword Search**: Uses case-insensitive LIKE pattern matching for each keyword/phrase
+            
+            • **Normalization**: Calculates mentions per 1,000 words to account for varying speech lengths:
+              - Formula: (speech_count / total_words) × 1000
+              - Groups results by year to show temporal trends
+            
+            • **Data Aggregation**:
+              - Counts speeches containing each keyword per year
+              - Sums total word count for normalization
+              - Orders results chronologically
+            
+            • **Visualization**: Multi-line chart showing keyword popularity over time
+            
+            • **Burst Detection**: (Placeholder) Would identify periods of unusually high keyword usage
+            
+            • **Limitations**:
+              - Simple pattern matching may miss variations or synonyms
+              - No stemming or lemmatization applied
+              - Case-insensitive but exact phrase matching only
+              - May include false positives from partial word matches
+            """)
+            
         except Exception as e:
             st.error(f"Error creating keyword trajectory chart: {e}")
             logger.error(f"Error in _create_keyword_trajectory_chart: {e}")
@@ -849,6 +1011,38 @@ class UNGAVisualizationManager:
                 title="Sentiment Distribution by Country"
             )
             st.plotly_chart(fig2, use_container_width=True)
+            
+            # Add methodology section
+            add_methodology_section("""
+            **Sentiment Analysis Methodology:**
+            
+            • **Data Source**: All speeches from selected countries in the year range with word count > 100 words
+            
+            • **Sentiment Dictionary**: Uses predefined word lists for sentiment classification:
+              - **Positive Words**: peace, hope, progress, development, cooperation, unity, freedom, justice, prosperity, success
+              - **Negative Words**: war, conflict, crisis, poverty, violence, threat, danger, failure, destruction, suffering
+            
+            • **Calculation Method**:
+              - Counts positive and negative word occurrences in each speech
+              - Calculates sentiment score: (positive_count - negative_count) / total_sentiment_words
+              - Score range: -1 (very negative) to +1 (very positive)
+              - Weights scores by word count for more accurate representation
+            
+            • **Aggregation**: 
+              - Combines multiple speeches per country/year
+              - Calculates weighted average sentiment by year
+              - Uses word count as weighting factor
+            
+            • **Visualization**: 
+              - Line chart: Sentiment trends over time by country
+              - Box plot: Distribution of sentiment scores by country
+            
+            • **Limitations**:
+              - Simple word-counting approach (not context-aware)
+              - Limited sentiment dictionary may miss nuanced expressions
+              - No handling of negations or sarcasm
+              - May not capture cultural or diplomatic language nuances
+            """)
             
         except Exception as e:
             st.error(f"Error creating sentiment trend chart: {e}")
@@ -907,6 +1101,39 @@ class UNGAVisualizationManager:
             
             st.plotly_chart(fig, use_container_width=True)
             
+            # Add methodology section
+            add_methodology_section("""
+            **Event-Aligned Timeline Analysis Methodology:**
+            
+            • **Data Source**: All speeches from 3 years before to 3 years after each selected event
+            
+            • **Event Definitions**: Predefined major events with associated keywords:
+              - Cold War End (1991): cold war, berlin wall, soviet union, glasnost, perestroika
+              - 9/11 (2001): terrorism, 9/11, september 11, terrorist, security
+              - Financial Crisis (2008): financial crisis, economic crisis, recession, banking, economy
+              - Arab Spring (2011): arab spring, democracy, revolution, protest, uprising
+              - Paris Agreement (2015): paris agreement, climate change, emissions, carbon, global warming
+              - COVID-19 (2020): covid, pandemic, coronavirus, health, crisis
+              - Ukraine War (2022): ukraine, russia, war, conflict, invasion
+            
+            • **Calculation Method**:
+              - Searches for event-related keywords in speeches using OR conditions
+              - Counts speeches containing any event keywords per year
+              - Calculates mentions per 1,000 words: (speech_count / total_words) × 1000
+              - Shows 7-year window (±3 years around each event)
+            
+            • **Visualization**: 
+              - Line chart showing keyword mentions over time
+              - Vertical dashed lines mark the actual event years
+              - Each event shown as separate line with different color
+            
+            • **Limitations**:
+              - Relies on predefined keyword sets
+              - May miss event-related discussions using different terminology
+              - Fixed 7-year window may not capture all relevant periods
+              - Simple keyword matching without context analysis
+            """)
+            
         except Exception as e:
             st.error(f"Error creating event timeline chart: {e}")
             logger.error(f"Error in _create_event_timeline_chart: {e}")
@@ -933,6 +1160,47 @@ class UNGAVisualizationManager:
             
             fig.update_layout(height=500)
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Add methodology section
+            add_methodology_section(f"""
+            **Regional Comparison Analysis Methodology:**
+            
+            • **Data Source**: All speeches from selected regions with word count > 100 words
+            
+            • **Comparison Metric**: {metric}
+            
+            • **Calculation Methods by Metric**:
+            
+            **Topic Focus**:
+            - Counts total speeches per region per year
+            - Calculates average word count per speech
+            - Groups by region and year for temporal comparison
+            
+            **Speech Length**:
+            - Calculates average word count per speech by region and year
+            - Counts total speeches for context
+            - Shows regional differences in speech verbosity
+            
+            **Sentiment**:
+            - Uses predefined positive/negative word dictionaries
+            - Calculates sentiment score: (positive - negative) / total_sentiment_words
+            - Weights by word count for accurate representation
+            - Aggregates by region and year
+            
+            **Keyword Usage**:
+            - Analyzes 6 common keywords: development, peace, security, climate, human rights, cooperation
+            - Counts speeches containing each keyword per region per year
+            - Calculates mentions per 1,000 words for normalization
+            - Shows regional focus differences
+            
+            • **Visualization**: Grouped bar chart comparing regions across selected metric
+            
+            • **Limitations**:
+            - Sentiment analysis uses simple word counting
+            - Keyword analysis limited to predefined terms
+            - Regional groupings may not capture sub-regional differences
+            - No statistical significance testing
+            """)
             
         except Exception as e:
             st.error(f"Error creating regional comparison chart: {e}")
@@ -1252,8 +1520,8 @@ class UNGAVisualizationManager:
                 SELECT 
                     country_name,
                     region,
-                    speech_text,
-                    word_count,
+                    ANY_VALUE(speech_text) as speech_text,
+                    AVG(word_count) as word_count,
                     COUNT(*) as speech_count
                 FROM speeches 
                 WHERE year = ? 
@@ -1856,6 +2124,16 @@ def create_region_distribution_chart(db_manager):
             names='region',
             title="Speech Distribution by Region"
         )
+        
+        # Add methodology note to the figure
+        fig.add_annotation(
+            text="Methodology: Counts all speeches by region from database",
+            xref="paper", yref="paper",
+            x=0.5, y=-0.1,
+            showarrow=False,
+            font=dict(size=10, color="gray")
+        )
+        
         return fig
     except Exception as e:
         logger.error(f"Error creating region distribution chart: {e}")
@@ -1898,6 +2176,16 @@ def create_word_count_heatmap(db_manager):
             title="Average Word Count by Country and Year",
             color_continuous_scale='Blues'
         )
+        
+        # Add methodology note
+        fig.add_annotation(
+            text="Methodology: Average word count per speech, grouped by country and year",
+            xref="paper", yref="paper",
+            x=0.5, y=-0.1,
+            showarrow=False,
+            font=dict(size=10, color="gray")
+        )
+        
         return fig
     except Exception as e:
         logger.error(f"Error creating word count heatmap: {e}")
@@ -1941,6 +2229,16 @@ def create_au_members_chart(db_manager):
             y='au_members',
             title="AU Members Speaking at UNGA Over Time"
         )
+        
+        # Add methodology note
+        fig.add_annotation(
+            text="Methodology: Counts distinct African Union member countries speaking each year",
+            xref="paper", yref="paper",
+            x=0.5, y=-0.1,
+            showarrow=False,
+            font=dict(size=10, color="gray")
+        )
+        
         return fig
     except Exception as e:
         logger.error(f"Error creating AU members chart: {e}")
@@ -1968,6 +2266,16 @@ def create_word_count_distribution(db_manager):
             title="Distribution of Speech Word Counts",
             nbins=50
         )
+        
+        # Add methodology note
+        fig.add_annotation(
+            text="Methodology: Histogram of word counts (filtered: 0 < word_count < 10,000)",
+            xref="paper", yref="paper",
+            x=0.5, y=-0.1,
+            showarrow=False,
+            font=dict(size=10, color="gray")
+        )
+        
         return fig
     except Exception as e:
         logger.error(f"Error creating word count distribution: {e}")
@@ -2035,6 +2343,16 @@ def create_top_countries_chart(db_manager):
             title="Top 20 Countries by Speech Count",
             orientation='h'
         )
+        
+        # Add methodology note
+        fig.add_annotation(
+            text="Methodology: Top 20 countries by total speech count across all years",
+            xref="paper", yref="paper",
+            x=0.5, y=-0.1,
+            showarrow=False,
+            font=dict(size=10, color="gray")
+        )
+        
         return fig
     except Exception as e:
         logger.error(f"Error creating top countries chart: {e}")
@@ -2089,6 +2407,16 @@ def create_country_year_heatmap(db_manager, selected_countries=None, year_range=
             color_continuous_scale='RdYlGn',
             labels=dict(x="Year", y="Country", color="Speech Count")
         )
+        
+        # Add methodology note
+        fig.add_annotation(
+            text="Methodology: Speech count per country per year (green=more speeches, red=fewer)",
+            xref="paper", yref="paper",
+            x=0.5, y=-0.1,
+            showarrow=False,
+            font=dict(size=10, color="gray")
+        )
+        
         return fig
     except Exception as e:
         logger.error(f"Error creating country year heatmap: {e}")
