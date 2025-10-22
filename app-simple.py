@@ -30,7 +30,7 @@ def main():
         st.subheader("🔐 Authentication Required")
         password = st.text_input("Enter password:", type="password")
         if st.button("Login"):
-            if password == "unga2024":
+            if password == os.getenv("APP_PASSWORD", "default_password"):
                 st.session_state.authenticated = True
                 st.rerun()
             else:
