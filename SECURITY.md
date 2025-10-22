@@ -1,6 +1,10 @@
 # Security Notice
 
 **Developed by:** Mafizul Islam  
+**Data Expert and Team Lead**  
+**Strategic Management Unit (Data)**  
+**Office of the Special Adviser on Africa**  
+
 **Copyright:** © 2025 Mafizul Islam. All rights reserved.
 
 ## 🔒 API Key Protection
