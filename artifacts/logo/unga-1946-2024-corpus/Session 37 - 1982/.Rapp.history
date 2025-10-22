@@ -1,0 +1,431 @@
+library(rJava)#
+Sys.setenv(NOAWT=TRUE)#
+library(tm)#
+library(Snowball)#
+library(gplots)#
+library(austin)#
+library(RWekajars)#
+library(foreign)#
+library(wordcloud)#
+set.seed(100)
+setwd("/Users/alexanderbaturo/Dropbox/UN General Debate/Analysis")
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 16 - 1962")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 16 - 1962"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)
+AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="16"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="16"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="37"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="37"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+getOption("mc.cores", 2L)
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers, mc.cores=1)
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)
+library(SnowballC)
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+getOption("mc.cores", 2L)
+text.corpus.format <- tm_map(text.corpus.format, asPlainTextDocument, mc.cores=1)
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+# # # text cleaning#
+#
+	# remove numbers#
+	text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 38 - 1983")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 38 - 1983"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)#
+		    text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+text.corpus.format <- tm_map(text.corpus.format, toLower)
+text.corpus.format <- tm_map(text.corpus.format, toLower)
+text.corpus.format <- tm_map(text.corpus.format, toLower)
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers, mc.cores = 2#
+)
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)
+mclapply(1:3, test, mc.cores = 2, mc.preschedule = FALSE)
+require(parallel)
+mclapply(1:3, test, mc.cores = 2, mc.preschedule = FALSE)
+mclapply(1:3, text.corpus.format, mc.cores = 2, mc.preschedule = FALSE)
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"), mc.cores=1#
+)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  mc.cores=1#
+, c(stopwords("english"),"The", "the"))
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)
+library(parallel)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  c(stopwords("english"),"The", "the"))
+library(SnowballC)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  c(stopwords("english"),"The", "the"))
+removeWords(text.corpus.format[[1]])
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  mc.cores=2, c(stopwords("english"),"The", "the"))
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  mc.cores=1, c(stopwords("english"),"The", "the"))
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  mc.cores=1, c(stopwords("english"),"The", "the"))
+text.corpus.format <- tm_map(text.corpus.format, as.PlainTextDocument)
+text.corpus.format <- tm_map(text.corpus.format, as.PlainTextDocument, mc.cores=2)
+text.corpus.format <- tm_map(text.corpus.format, as.PlainTextDocument, mc.cores=1)
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, as.PlainTextDocument, mc.cores=1)
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="37"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="37"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)#
+			# remove punctuation#
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  c(stopwords("english"),"The", "the"))
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 35 - 1980")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 35 - 1980"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,   c(stopwords("english"),"The", "the"))
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="35"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="35"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1980.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1980.csv", row.names=docnames)
+y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1980.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1980"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,151),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1980.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1980"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,151),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()
+out.file <- paste("wordcloud_1980.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1980.csv")#
+sink(file="results1980")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982")
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 37 - 1982"
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus
+text.corpus.format <- tm_map(text.corpus.format, removeNumbers)
+text.corpus.format <-tm_map(text.corpus.format,removePunctuation)
+text.corpus.format  <- tm_map(text.corpus.format, removeWords,  c(stopwords("english"),"The", "the"))

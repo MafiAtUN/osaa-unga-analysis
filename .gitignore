@@ -1,21 +1,3 @@
-# Environment variables and secrets
-.env
-.env.local
-.env.production
-.env.staging
-*.env
-
-# API Keys and Configuration
-config.json
-secrets.json
-azure_config.md
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-analyses.db
-
 # Python
 __pycache__/
 *.py[cod]
@@ -40,12 +22,18 @@ wheels/
 MANIFEST
 
 # Virtual environments
-osaaunga/
 venv/
 env/
 ENV/
 env.bak/
 venv.bak/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # IDE
 .vscode/
@@ -64,66 +52,20 @@ ehthumbs.db
 Thumbs.db
 
 # Logs
-*.log
 logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Streamlit
+.streamlit/
+
+# Jupyter
+.ipynb_checkpoints/
 
 # Temporary files
 *.tmp
 *.temp
-temp/
-tmp/
-
-# Deployment files
-app-deployment.zip
-*.zip
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# pytest
-.pytest_cache/
-
-# Coverage reports
-htmlcov/
-.coverage
-.coverage.*
-coverage.xml
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# UNGA Corpus (large dataset - download separately)
-artifacts/logo/unga-1946-2024-corpus/
-
-# Azure deployment files (contain sensitive information)
-.deployment
-
-# Development and backup files
-app_backup.py
-app_new.py
-setup_env.py
-CLEANUP_PLAN.md
-SECURITY_CHECKLIST.md
-azure_config.md
-AZURE_DEPLOYMENT.md
-AZURE_DEPLOYMENT_NEW.md
-config_template.txt
-
-# Framework and development files
-unga_platform/
-Legacy training/
-
-# Deployment archives
-app-deployment.zip
-*.zip
-
-# Docker files (not needed for Azure)
-docker-compose.yml
-Dockerfile
-azure-deploy.sh
-requirements-azure.txt
-
-# Pre-commit
-.pre-commit-config.yaml.bak

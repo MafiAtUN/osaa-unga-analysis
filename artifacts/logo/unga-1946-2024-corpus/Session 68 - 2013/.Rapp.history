@@ -1,0 +1,5438 @@
+library(rJava)#
+Sys.setenv(NOAWT=TRUE)#
+library(tm)#
+library(Snowball)#
+library(gplots)#
+library(austin)#
+library(RWekajars)#
+library(foreign)#
+library(wordcloud)#
+set.seed(100)
+--------------------#
+# 1991#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 46 - 1991")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 46 - 1991"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 46 - 1991"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="46"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="46"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1991.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1991.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1991.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1991"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,151),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1991.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1991.csv")#
+sink(file="results1991")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1992#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 47 - 1992")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 47 - 1992"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 47 - 1992"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="47"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="47"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.xls(positions, row.names=docnames, file="results1992.xls")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1992.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1992.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1992"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,161),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1992.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1992.csv")#
+sink(file="results1992")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1993#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 48 - 1993")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 48 - 1993"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 48 - 1993"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="48"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="48"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1993.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1993.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1993.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1993"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,177),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1993.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1993.csv")#
+sink(file="results1993")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1994#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 49 - 1994")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 49 - 1994"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 49 - 1994"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="IRN" & year=="49"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="49"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1994.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1994.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1994.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1994"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,161),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1994.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1994.csv")#
+sink(file="results1994")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1995#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 50 - 1995")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 50 - 1995"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 50 - 1995"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="50"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="50"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1995.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1995.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1995.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1995"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,174),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1995.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1995.csv")#
+sink(file="results1995")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1996#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 51 - 1996")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 51 - 1996"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 51 - 1996"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="51"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="51"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1996.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1996.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1996.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1996"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,179),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1996.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1996.csv")#
+sink(file="results1996")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1997#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 52 - 1997")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 52 - 1997"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 52 - 1997"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="52"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="52"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1997.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1997.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1997.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1997"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,179),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1997.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1997.csv")#
+sink(file="results1997")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1998#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 53 - 1998")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 53 - 1998"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 53 - 1998"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="53"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="53"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1998.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1998.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1998.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1998"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,183),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1998.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1998.csv")#
+sink(file="results1998")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1999#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 54 - 1999")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 54 - 1999"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 54 - 1999"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="54"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="54"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1999.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1999.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1999.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1999"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,183),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1999.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1999.csv")#
+sink(file="results1999")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2000#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 55 - 2000")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 55 - 2000"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 55 - 2000"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="55"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="55"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2000.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2000.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2000.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2000"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,180),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2000.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2000.csv")#
+sink(file="results2000")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2001#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 56 - 2001")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 56 - 2001"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 56 - 2001"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="56"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="56"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2001.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2001.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2001.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2001"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,190),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2001.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2001.csv")#
+sink(file="results2001")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2002#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 57 - 2002")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 57 - 2002"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 57 - 2002"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="57"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="57"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2002.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2002.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2002.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2002"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,190),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2002.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2002.csv")#
+sink(file="results2002")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2003#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 58 - 2003")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 58 - 2003"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 58 - 2003"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="58"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="58"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2003.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2003.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2003.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2003"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,191),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2003.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2003.csv")#
+sink(file="results2003")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2004#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 59 - 2004")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 59 - 2004"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 59 - 2004"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="59"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="59"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2004.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2004.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2004.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2004"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,194),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2004.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2004.csv")#
+sink(file="results2004")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2005#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 60 - 2005")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 60 - 2005"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 60 - 2005"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="60"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="60"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2005.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2005.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2005.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2005"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,189),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2005.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2005.csv")#
+sink(file="results2005")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2006#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 61 - 2006")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 61 - 2006"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 61 - 2006"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="61"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="61"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2006.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2006.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2006.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2006"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,195),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2006.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2006.csv")#
+sink(file="results2006")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2007#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 62 - 2007")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 62 - 2007"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 62 - 2007"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="62"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="62"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2007.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2007.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2007.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2007"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,193),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2007.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2007.csv")#
+sink(file="results2007")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2008#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 63 - 2008")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 63 - 2008"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 63 - 2008"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="63"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="63"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2008.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2008.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2008.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2008"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,194),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2008.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2008.csv")#
+sink(file="results2008")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2009#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 64 - 2009")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 64 - 2009"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 64 - 2009"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="64"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="64"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2009.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2009.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2009.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2009"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,195),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2009.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2009.csv")#
+sink(file="results2009")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2010#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 65 - 2010")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 65 - 2010"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 65 - 2010"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="65"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="65"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2010.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2010.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2010.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2010"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,191),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2010.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2010.csv")#
+sink(file="results2010")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2011#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 66 - 2011")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 66 - 2011"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 66 - 2011"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="66"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="66"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2011.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2011.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2011.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2011"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,196),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2011.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2011.csv")#
+sink(file="results2011")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2012#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 67 - 2012")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 67 - 2012"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 67 - 2012"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="67"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="67"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2012.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2012.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2012.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2012"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,196),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2012.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2012.csv")#
+sink(file="results2012")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2013#
+# --------------------#
+# setwd("/ALEX/Dropbox/UN General Debate/Data/Session 68 - 2013")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 68 - 2013"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+files.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/Data/Session 68 - 2013"#
+graphs.path <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+data.output <- "/Users/alexanderbaturo/Dropbox/UN General Debate/"#
+#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="68"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="68"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2013.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2013.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2013.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2013"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,196),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2013.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2013.csv")#
+sink(file="results2013")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)
+--------------------#
+# 1991#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 46 - 1991")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 46 - 1991"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="46"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="46"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1991.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1991.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1991.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1991"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,151),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1991.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1991.csv")#
+sink(file="results1991")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1992#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 47 - 1992")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 47 - 1992"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="47"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="47"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.xls(positions, row.names=docnames, file="results1992.xls")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1992.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1992.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1992"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,161),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1992.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1992.csv")#
+sink(file="results1992")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1993#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 48 - 1993")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 48 - 1993"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="48"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="48"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1993.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1993.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1993.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1993"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,177),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1993.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1993.csv")#
+sink(file="results1993")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1994#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 49 - 1994")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 49 - 1994"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="IRN" & year=="49"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="49"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1994.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1994.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1994.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1994"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,161),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1994.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1994.csv")#
+sink(file="results1994")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1995#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 50 - 1995")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 50 - 1995"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="50"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="50"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1995.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1995.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1995.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1995"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,174),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1995.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1995.csv")#
+sink(file="results1995")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1996#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 51 - 1996")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 51 - 1996"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="51"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="51"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1996.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1996.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1996.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1996"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,179),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1996.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1996.csv")#
+sink(file="results1996")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1997#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 52 - 1997")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 52 - 1997"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="52"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="52"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1997.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1997.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1997.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1997"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,179),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1997.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1997.csv")#
+sink(file="results1997")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1998#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 53 - 1998")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 53 - 1998"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="53"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="53"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1998.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1998.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1998.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1998"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,183),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1998.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1998.csv")#
+sink(file="results1998")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 1999#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 54 - 1999")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 54 - 1999"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="54"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="54"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results1999.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se1999.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_1999.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 1999"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,183),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_1999.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq1999.csv")#
+sink(file="results1999")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2000#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 55 - 2000")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 55 - 2000"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="55"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="55"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2000.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2000.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2000.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2000"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,180),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2000.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2000.csv")#
+sink(file="results2000")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2001#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 56 - 2001")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 56 - 2001"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="56"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="56"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2001.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2001.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2001.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2001"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,190),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2001.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2001.csv")#
+sink(file="results2001")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2002#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 57 - 2002")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 57 - 2002"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="57"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="57"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2002.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2002.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2002.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2002"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,190),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2002.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2002.csv")#
+sink(file="results2002")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2003#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 58 - 2003")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 58 - 2003"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="58"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="58"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2003.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2003.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2003.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2003"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,191),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2003.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2003.csv")#
+sink(file="results2003")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2004#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 59 - 2004")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 59 - 2004"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="59"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="59"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2004.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2004.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2004.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2004"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,194),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2004.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2004.csv")#
+sink(file="results2004")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2005#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 60 - 2005")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 60 - 2005"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="60"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="60"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2005.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2005.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2005.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2005"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,189),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2005.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2005.csv")#
+sink(file="results2005")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2006#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 61 - 2006")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 61 - 2006"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="61"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="61"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2006.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2006.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2006.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2006"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,195),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2006.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2006.csv")#
+sink(file="results2006")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2007#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 62 - 2007")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 62 - 2007"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="62"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="62"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2007.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2007.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2007.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2007"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,193),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2007.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2007.csv")#
+sink(file="results2007")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2008#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 63 - 2008")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 63 - 2008"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="63"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="63"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2008.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2008.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2008.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2008"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,194),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2008.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2008.csv")#
+sink(file="results2008")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2009#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 64 - 2009")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 64 - 2009"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="64"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="64"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2009.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2009.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2009.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2009"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,195),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2009.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2009.csv")#
+sink(file="results2009")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2010#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 65 - 2010")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 65 - 2010"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="65"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="65"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2010.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2010.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2010.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2010"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,191),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2010.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2010.csv")#
+sink(file="results2010")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2011#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 66 - 2011")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 66 - 2011"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="66"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="66"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2011.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2011.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2011.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2011"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,196),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2011.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2011.csv")#
+sink(file="results2011")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2012#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 67 - 2012")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 67 - 2012"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="67"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="67"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2012.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2012.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2012.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2012"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,196),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2012.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2012.csv")#
+sink(file="results2012")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)#
+# --------------------#
+# 2013#
+# --------------------#
+setwd("/ALEX/Dropbox/UN General Debate/Data/Session 68 - 2013")#
+# define directory that contains text files.#
+# Note:#
+# - files must have ending .txt#
+# - directory cannot contain any other files#
+# - file names will be used as document names#
+#
+files.path <- "/ALEX/Dropbox/UN General Debate/Data/Session 68 - 2013"#
+graphs.path <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+data.output <- "/ALEX/Dropbox/UN General Debate/Analysis"#
+# --------------------------------------------------------------------------------#
+# TEXT CORPUS PROCESSING#
+# --------------------------------------------------------------------------------#
+# generate text corpus#
+#
+text.file.directory <- files.path#
+textcorpus <- Corpus(DirSource(text.file.directory), readerControl=list(reader=readPlain,language="english", load=T))#
+# extract document names for tracking purposes#
+docnames <- list.files(text.file.directory)#
+for (i in 1:length(textcorpus)) {#
+  docnames[i] <- strsplit(docnames[i],".txt")[[1]]#
+  }#
+text.corpus.format<-textcorpus#
+# --------------------------------------------------------------------------------#
+wordfreqmatrix <- DocumentTermMatrix(text.corpus.format)#
+wcdata <- as.matrix(wordfreqmatrix)#
+rownames(wcdata) <- docnames#
+wcdata <- t(wcdata)#
+# AB: gives number of items to replace is not a multiple of replacement length#
+N <- dim(wcdata)[2]#
+#
+# generate names from colnames#
+full.names <- docnames#
+countryname <- rep(NA,N)#
+year <- rep(NA,N)#
+#
+for (i in 1:N) {#
+  countryname[i] <- strsplit(full.names[i],"_")[[1]][1]#
+  year[i] <- strsplit(full.names[i],"_")[[1]][2]#
+}#
+#
+# delete words that appear in less than 3 documents#
+dummy.matrix <- wcdata#
+dummy.matrix[dummy.matrix>0] <- 1#
+wcdata.reduced <- wcdata[rowSums(dummy.matrix) >= 3, ]#
+#
+# check for errors#
+# inspect(text.corpus.format[1:2])#
+#
+# --------------------------------------------------------------------------------#
+# ESTIMATION#
+# --------------------------------------------------------------------------------#
+#
+ref.left <- seq(1,N,1)[countryname=="CUB" & year=="68"]#
+ref.right <- seq(1,N,1)[countryname=="USA" & year=="68"]#
+#
+m <- wfm(wcdata.reduced, word.margin=1)#
+wf <- wordfish(m, dir=c(ref.left,ref.right), verbose=TRUE)#
+summary(wf)#
+positions <- wf$theta#
+# write.csv(t(as.matrix(positions)), file="results.csv")#
+write.table(positions, row.names=docnames, file="results2013.csv")#
+standard <- wf$se.theta#
+se.lb <- wf$theta -2*wf$se.theta#
+se.ub <- wf$theta +2*wf$se.theta#
+#
+write.table(standard, file="se2013.csv", row.names=docnames)#
+## # -------------------------------#
+## # PLOT ESTIMATED POSITIONS #
+## # -------------------------------#
+#
+# y-axis variable: rank of positins by year#
+ydummy <- (-1)*(rank(positions)-N)#
+# label names#
+lab.name <- paste(countryname,year)#
+#
+out.file <- paste("positions_2013.pdf",sep="")#
+pdf(file=out.file, height=8, width=4)#
+par(mar=c(4,1,2,1)+0.2)#
+#
+	plot(positions,ydummy,#
+		, main = "UNGA 2013"#
+		, xlab="Estimated Positions", ylab = " ", yaxt = "n"#
+		, cex=0.2#
+		, pch = 1#
+		, col = "orange"#
+		, xlim = c(-2.5, 2.5),#
+		ylim=c(1,196),#
+		)	#
+		for (i in seq(1,length(ydummy))){#
+			lines(c(se.lb[i], se.ub[i]), c(ydummy[i],ydummy[i])#
+			, col = "orange"#
+			, lwd = 1#
+		)#
+	}#
+text(x=positions,ydummy, labels=countryname, cex=0.25, pos=4)#
+abline(v=0,col=3,lty=5)#
+dev.off()#
+## # -------------------------------#
+## # PLOT WORD CLOUD #
+## # -------------------------------#
+#
+out.file <- paste("wordcloud_2013.pdf",sep="")#
+pdf(file=out.file)#
+wordcloud(text.corpus.format, scale=c(5,0.5), max.words=150,  random.order=FALSE, rot.per=0.35, use.r.layout=FALSE, colors=brewer.pal(8, "Dark2"))#
+dev.off()#
+## # save word frequency matrix in csv and results as txt#
+#
+write.table(wcdata.reduced, file="wordfreq2013.csv")#
+sink(file="results2013")#
+results <- summary(wf)#
+summary(wf)#
+sink(NULL)
