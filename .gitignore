@@ -27,6 +27,8 @@ env/
 ENV/
 env.bak/
 venv.bak/
+# Python virtual environment (should not be in repository)
+venv/
 
 # Environment variables and secrets
 .env
@@ -64,6 +66,8 @@ logs/
 *.sqlite3
 # But include the sample database
 !unga_vector_sample.db
+# Exclude the main database (too large for GitHub)
+unga_vector.db
 
 # Streamlit
 .streamlit/
