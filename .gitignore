@@ -62,6 +62,8 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
+# But include the sample database
+!unga_vector_sample.db
 
 # Streamlit
 .streamlit/

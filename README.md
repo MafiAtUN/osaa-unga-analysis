@@ -43,12 +43,60 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
    # Edit .env with your API keys
    ```
 
-3. **Run the application**:
+3. **Set up the database**:
+   ```bash
+   python setup_database.py
+   # Choose between sample database (quick start) or full database (802MB)
+   ```
+
+4. **Run the application**:
    ```bash
    streamlit run app.py
    ```
 
-4. **Access the app**: Open http://localhost:8501 in your browser
+5. **Access the app**: Open http://localhost:8501 in your browser
+
+## 🗄️ Database Setup
+
+### **Database Options**
+
+The UNGA Analysis App uses a vector database to store and search through 78 years of UN General Assembly speeches (1946-2024). Due to GitHub's file size limits, the full database (802MB) is not included in the repository.
+
+#### **Option 1: Sample Database (Recommended for Testing)**
+- **Size**: ~1.8MB
+- **Content**: 5 sample speeches from different countries
+- **Setup**: Automatically created with `python setup_database.py`
+- **Use Case**: Quick testing and development
+
+#### **Option 2: Full Database (Production Use)**
+- **Size**: ~802MB
+- **Content**: Complete UNGA corpus (1946-2024)
+- **Setup**: Created when you first run the application
+- **Use Case**: Full functionality with all historical data
+
+### **Database Setup Process**
+
+1. **Run the setup script**:
+   ```bash
+   python setup_database.py
+   ```
+
+2. **Choose your option**:
+   - **Option 1**: Use sample database (quick start)
+   - **Option 2**: Create full database (requires processing time)
+   - **Option 3**: Keep existing database
+
+3. **For full database creation**:
+   - The app will automatically process all UNGA speeches
+   - Estimated time: 10-30 minutes
+   - Progress is shown in the application interface
+
+### **Database Features**
+- **Vector Search**: Semantic search through speeches using AI embeddings
+- **Historical Coverage**: 78 years of UNGA speeches (1946-2024)
+- **Multi-language Support**: Automatic translation and processing
+- **Efficient Storage**: DuckDB-based vector database
+- **Real-time Updates**: New speeches can be added dynamically
 
 ## 📱 Application Tabs
 
