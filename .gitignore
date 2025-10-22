@@ -74,3 +74,9 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+# Raw speech files (too large for GitHub)
+artifacts/logo/unga-1946-2024-corpus/
+artifacts/logo/Session 80 - 2025/
+# But keep the logo files
+!artifacts/logo/*.svg
