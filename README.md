@@ -60,7 +60,11 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
 
 ### **Database Options**
 
-The UNGA Analysis App uses a vector database to store and search through 78 years of UN General Assembly speeches (1946-2024). Due to GitHub's file size limits, the full database (802MB) is not included in the repository.
+The UNGA Analysis App uses a vector database to store and search through 78 years of UN General Assembly speeches (1946-2024). Due to GitHub's file size limits, the following large files are not included in the repository:
+
+- **Full database**: 802MB (vector database with embeddings)
+- **Raw speech files**: 215MB (11,109 individual speech files)
+- **Total excluded**: ~1GB of data
 
 #### **Option 1: Sample Database (Recommended for Testing)**
 - **Size**: ~1.8MB
@@ -90,6 +94,18 @@ The UNGA Analysis App uses a vector database to store and search through 78 year
    - The app will automatically process all UNGA speeches
    - Estimated time: 10-30 minutes
    - Progress is shown in the application interface
+
+### **Raw Speech Files**
+
+The application includes access to the complete UNGA corpus (1946-2024) with 11,109 individual speech files:
+
+- **Total size**: 215MB of raw text files
+- **Coverage**: 78 years of UN General Assembly speeches
+- **Format**: Individual .txt files organized by session and country
+- **Languages**: Multiple languages with automatic translation support
+- **Access**: Files are processed into the vector database for analysis
+
+**Note**: Raw speech files are not included in the GitHub repository due to size limits. The application will automatically download and process them when creating the full database.
 
 ### **Database Features**
 - **Vector Search**: Semantic search through speeches using AI embeddings
