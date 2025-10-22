@@ -32,13 +32,14 @@ from src.unga_analysis.data.ingest import extract_text_from_file, validate_text_
 from src.unga_analysis.core.llm import run_analysis, get_available_models, OpenAIError, chunk_and_synthesize
 from src.unga_analysis.data.simple_vector_storage import simple_vector_storage as db_manager
 from src.unga_analysis.utils.sdg_utils import extract_sdgs, detect_africa_mention, format_sdgs
+from src.unga_analysis.core.openai_client import get_openai_client, get_whisper_client
 from src.unga_analysis.utils.export_utils import create_export_files, format_filename
 from src.unga_analysis.data.data_ingestion import data_ingestion_manager
 from src.unga_analysis.data.cross_year_analysis import cross_year_manager
 from src.unga_analysis.utils.visualization import UNGAVisualizationManager
+from src.unga_analysis.ui.auth_interface import render_auth_interface, is_user_authenticated, get_current_user, logout_user
+from src.unga_analysis.core.enhanced_search_engine import get_enhanced_search_engine
 
-# Import authentication and session management
-from src.unga_analysis.ui.auth import initialize_session_state, check_password, show_login_form
 
 # Import security utilities
 from src.unga_analysis.utils.security import sanitize_input, validate_prompt_safety, validate_file_upload
@@ -69,32 +70,6 @@ logger = get_logger("main")
 # OpenAI Client Setup
 # ======================
 
-@log_function_call
-def get_openai_client() -> Optional[AzureOpenAI]:
-    """Get Azure OpenAI client for Chat Completions API (Analysis)."""
-    api_key = os.getenv('AZURE_OPENAI_API_KEY')
-    azure_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-    api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-08-01-preview')
-    
-    if not api_key or not azure_endpoint:
-        st.error("Azure OpenAI credentials not configured")
-        return None
-    
-    return AzureOpenAI(api_key=api_key, azure_endpoint=azure_endpoint, api_version=api_version)
-
-
-@log_function_call
-def get_whisper_client() -> Optional[AzureOpenAI]:
-    """Get Azure OpenAI client for Whisper API."""
-    whisper_api_key = os.getenv('WHISPER_API_KEY')
-    whisper_endpoint = os.getenv('WHISPER_ENDPOINT')
-    whisper_api_version = os.getenv('WHISPER_API_VERSION', '2024-02-15-preview')
-    
-    if not whisper_api_key or not whisper_endpoint:
-        st.warning("Whisper API not configured - Audio transcription unavailable")
-        return None
-    
-    return AzureOpenAI(api_key=whisper_api_key, azure_endpoint=whisper_endpoint, api_version=whisper_api_version)
 
 
 # ======================
@@ -138,32 +113,156 @@ def process_analysis_with_text(extracted_text, country, speech_date, classificat
             return None
         
         with st.spinner("🔍 Analyzing speech..."):
-            output, error = run_analysis(
-                extracted_text,
-                country,
-                speech_date.isoformat() if speech_date else None,
-                classification,
-                model,
-                get_openai_client()
-            )
+            # Construct system and user messages
+            system_message = f"""You are an expert analyst of UN General Assembly speeches. 
+            Analyze the provided speech from {country} and provide insights on:
+            - Key themes and topics
+            - Policy positions
+            - International relations focus
+            - Development priorities
+            - Regional cooperation
+            - Global challenges addressed
             
-            if error:
-                st.error(f"Analysis failed: {error}")
+            Classification: {classification}
+            Date: {speech_date.isoformat() if speech_date else 'Not specified'}
+            """
+            
+            user_message = f"""Please analyze this UN General Assembly speech from {country}:
+
+            {extracted_text}
+            
+            Provide a comprehensive analysis focusing on the key themes, policy positions, and international relations aspects."""
+            
+            try:
+                output = run_analysis(
+                    system_message,
+                    user_message,
+                    model,
+                    get_openai_client()
+                )
+            except Exception as e:
+                st.error(f"Analysis failed: {e}")
                 return None
             
             if output:
                 sdgs = extract_sdgs(output)
                 africa_mentioned = detect_africa_mention(extracted_text)
                 
+                # Save analysis to analyses table
                 analysis_id = db_manager.save_analysis(
                     country=country,
-                    speech_date=speech_date.isoformat() if speech_date else None,
                     classification=classification,
-                    input_text=extracted_text,
+                    raw_text=extracted_text,
                     output_markdown=output,
+                    prompt_used=system_message,
                     sdgs=sdgs,
-                    africa_mentioned=africa_mentioned
+                    africa_mentioned=africa_mentioned,
+                    speech_date=speech_date.isoformat() if speech_date else None
                 )
+                
+                # Also save speech data to speeches table for future reference
+                try:
+                    # Determine country code and region
+                    country_code = country.upper()[:3] if len(country) >= 3 else country.upper()
+                    
+                    # Better region detection
+                    def get_region(country_name):
+                        african_countries = [
+                            "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", 
+                            "Cameroon", "Cape Verde", "Central African Republic", "Chad", "Comoros",
+                            "Democratic Republic of the Congo", "Republic of the Congo", "Djibouti",
+                            "Egypt", "Equatorial Guinea", "Eritrea", "Eswatini", "Ethiopia", "Gabon",
+                            "Gambia", "Ghana", "Guinea", "Guinea-Bissau", "Ivory Coast", "Kenya",
+                            "Lesotho", "Liberia", "Libya", "Madagascar", "Malawi", "Mali", "Mauritania",
+                            "Mauritius", "Morocco", "Mozambique", "Namibia", "Niger", "Nigeria",
+                            "Rwanda", "Sao Tome and Principe", "Senegal", "Seychelles", "Sierra Leone",
+                            "Somalia", "South Africa", "South Sudan", "Sudan", "Tanzania", "Togo",
+                            "Tunisia", "Uganda", "Zambia", "Zimbabwe"
+                        ]
+                        
+                        asian_countries = [
+                            "Afghanistan", "Bangladesh", "Bhutan", "Brunei", "Cambodia", "China",
+                            "India", "Indonesia", "Japan", "Kazakhstan", "Kyrgyzstan", "Laos",
+                            "Malaysia", "Maldives", "Mongolia", "Myanmar", "Nepal", "North Korea",
+                            "Pakistan", "Philippines", "Singapore", "South Korea", "Sri Lanka",
+                            "Tajikistan", "Thailand", "Timor-Leste", "Turkmenistan", "Uzbekistan",
+                            "Vietnam"
+                        ]
+                        
+                        european_countries = [
+                            "Albania", "Andorra", "Austria", "Belarus", "Belgium", "Bosnia and Herzegovina",
+                            "Bulgaria", "Croatia", "Cyprus", "Czech Republic", "Denmark", "Estonia",
+                            "Finland", "France", "Germany", "Greece", "Hungary", "Iceland", "Ireland",
+                            "Italy", "Latvia", "Liechtenstein", "Lithuania", "Luxembourg", "Malta",
+                            "Moldova", "Monaco", "Montenegro", "Netherlands", "North Macedonia", "Norway",
+                            "Poland", "Portugal", "Romania", "Russia", "San Marino", "Serbia",
+                            "Slovakia", "Slovenia", "Spain", "Sweden", "Switzerland", "Ukraine",
+                            "United Kingdom", "Vatican City"
+                        ]
+                        
+                        american_countries = [
+                            "Argentina", "Bahamas", "Barbados", "Belize", "Bolivia", "Brazil",
+                            "Canada", "Chile", "Colombia", "Costa Rica", "Cuba", "Dominica",
+                            "Dominican Republic", "Ecuador", "El Salvador", "Grenada", "Guatemala",
+                            "Guyana", "Haiti", "Honduras", "Jamaica", "Mexico", "Nicaragua",
+                            "Panama", "Paraguay", "Peru", "Saint Kitts and Nevis", "Saint Lucia",
+                            "Saint Vincent and the Grenadines", "Suriname", "Trinidad and Tobago",
+                            "United States", "Uruguay", "Venezuela"
+                        ]
+                        
+                        if country_name in african_countries:
+                            return "Africa"
+                        elif country_name in asian_countries:
+                            return "Asia"
+                        elif country_name in european_countries:
+                            return "Europe"
+                        elif country_name in american_countries:
+                            return "Americas"
+                        else:
+                            return "Other"
+                    
+                    region = get_region(country)
+                    
+                    # Determine if it's an African Union member (reuse the list from get_region)
+                    african_countries = [
+                        "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", 
+                        "Cameroon", "Cape Verde", "Central African Republic", "Chad", "Comoros",
+                        "Democratic Republic of the Congo", "Republic of the Congo", "Djibouti",
+                        "Egypt", "Equatorial Guinea", "Eritrea", "Eswatini", "Ethiopia", "Gabon",
+                        "Gambia", "Ghana", "Guinea", "Guinea-Bissau", "Ivory Coast", "Kenya",
+                        "Lesotho", "Liberia", "Libya", "Madagascar", "Malawi", "Mali", "Mauritania",
+                        "Mauritius", "Morocco", "Mozambique", "Namibia", "Niger", "Nigeria",
+                        "Rwanda", "Sao Tome and Principe", "Senegal", "Seychelles", "Sierra Leone",
+                        "Somalia", "South Africa", "South Sudan", "Sudan", "Tanzania", "Togo",
+                        "Tunisia", "Uganda", "Zambia", "Zimbabwe"
+                    ]
+                    is_african_member = country in african_countries
+                    
+                    # Get session number (approximate based on year)
+                    session = speech_date.year - 1945 if speech_date else 2024 - 1945
+                    
+                    # Save speech to speeches table
+                    speech_id = db_manager.save_speech(
+                        country_code=country_code,
+                        country_name=country,
+                        region=region,
+                        session=session,
+                        year=speech_date.year if speech_date else 2024,
+                        speech_text=extracted_text,
+                        source_filename=f"analysis_{analysis_id}",
+                        is_african_member=is_african_member,
+                        metadata={"analysis_id": analysis_id, "classification": classification}
+                    )
+                    
+                    logger.info(f"Saved speech {speech_id} for {country} to speeches table")
+                    
+                    # Show success message to user
+                    st.success(f"💾 **Data saved to database!** Speech for {country} ({region}) is now available for future analysis.")
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to save speech data: {e}")
+                    st.warning(f"⚠️ Analysis completed but failed to save speech data: {e}")
+                    # Don't fail the analysis if speech saving fails
                 
                 st.session_state.current_analysis = {
                     'id': analysis_id,
@@ -395,11 +494,35 @@ def render_visualizations_tab():
 
 def main():
     """Main application function."""
-    initialize_session_state()
+    # Initialize session state for authentication
+    if 'user' not in st.session_state:
+        st.session_state.user = None
+    if 'auth_page' not in st.session_state:
+        st.session_state.auth_page = 'login'
+    if 'admin_authenticated' not in st.session_state:
+        st.session_state.admin_authenticated = False
     
-    if not check_password():
-        show_login_form()
+    # Check if user is authenticated
+    if not is_user_authenticated():
+        render_auth_interface()
         return
+    
+    # Get current user info
+    current_user = get_current_user()
+    
+    # Display user info in sidebar
+    with st.sidebar:
+        st.markdown("### 👤 User Information")
+        st.markdown(f"**Name:** {current_user.full_name}")
+        st.markdown(f"**Title:** {current_user.title}")
+        st.markdown(f"**Office:** {current_user.office}")
+        st.markdown(f"**Last Login:** {current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else 'First time'}")
+        
+        if st.button("🚪 Logout"):
+            logout_user()
+            return
+        
+        st.markdown("---")
     
     # Initialize database
     try:
@@ -425,38 +548,61 @@ def main():
     
     st.markdown("---")
     
-    # Create tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-        "📝 New Analysis", 
-        "📚 All Analyses", 
-        "🗺️ Data Explorer", 
-        "🌍 Cross-Year Analysis", 
-        "📊 Visualizations", 
-        "📄 Document Context",
-        "🔍 Error Insights"
-    ])
+    # Create tabs - add admin tab for islam50@un.org
+    if current_user.email == "islam50@un.org":
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
+            "📝 New Analysis", 
+            "🌍 Cross-Year Analysis", 
+            "📄 Document Context",
+            "📚 All Analyses", 
+            "📊 Visualizations", 
+            "🗺️ Data Explorer", 
+            "🗄️ Database Chat",
+            "🔍 Error Insights",
+            "🛡️ Admin Portal"
+        ])
+    else:
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+            "📝 New Analysis", 
+            "🌍 Cross-Year Analysis", 
+            "📄 Document Context",
+            "📚 All Analyses", 
+            "📊 Visualizations", 
+            "🗺️ Data Explorer", 
+            "🗄️ Database Chat",
+            "🔍 Error Insights"
+        ])
     
     with tab1:
         render_new_analysis_tab()
     
     with tab2:
-        render_all_analyses_tab()
+        render_cross_year_analysis_tab()
     
     with tab3:
-        render_data_explorer_tab()
+        render_document_context_analysis_tab()
     
     with tab4:
-        render_cross_year_analysis_tab()
+        render_all_analyses_tab()
     
     with tab5:
         render_visualizations_tab()
     
     with tab6:
-        render_document_context_analysis_tab()
-    
+        render_data_explorer_tab()
+
     with tab7:
+        from src.unga_analysis.ui.tabs.database_chat_tab import render_database_chat_tab
+        render_database_chat_tab()
+
+    with tab8:
         from src.unga_analysis.ui.tabs.error_insights_tab import render_error_insights_tab
         render_error_insights_tab()
+    
+    # Admin tab (only for islam50@un.org)
+    if current_user.email == "islam50@un.org":
+        with tab9:
+            render_admin_tab()
     
     # Footer
     st.markdown("---")
@@ -477,6 +623,354 @@ def render_error_insights_tab():
     """Render the Error Insights tab."""
     from src.unga_analysis.ui.tabs.error_insights_tab import render_error_insights_tab
     render_error_insights_tab()
+
+
+def render_admin_tab():
+    """Render the Admin Portal tab."""
+    import sqlite3
+    import hashlib
+    import os
+    from datetime import datetime
+    
+    st.header("🛡️ Admin Portal")
+    st.markdown("**User Management and System Administration**")
+    
+    # Database connection
+    DB_PATH = "user_auth.db"
+    
+    def get_db_connection():
+        return sqlite3.connect(DB_PATH)
+    
+    def get_all_users():
+        """Get all users from database"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT id, email, full_name, title, office, purpose, 
+                       status, created_at, approved_at, last_login, login_count
+                FROM users
+                ORDER BY created_at DESC
+            """)
+            
+            users = []
+            for row in cursor.fetchall():
+                users.append({
+                    'id': row[0],
+                    'email': row[1],
+                    'full_name': row[2],
+                    'title': row[3],
+                    'office': row[4],
+                    'purpose': row[5],
+                    'status': row[6],
+                    'created_at': row[7],
+                    'approved_at': row[8],
+                    'last_login': row[9],
+                    'login_count': row[10]
+                })
+            
+            conn.close()
+            return users
+        except Exception as e:
+            st.error(f"Database error: {e}")
+            return []
+    
+    def get_usage_logs(user_id=None):
+        """Get usage logs"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            if user_id:
+                cursor.execute("""
+                    SELECT ul.id, ul.user_id, ul.action, ul.details, ul.timestamp, u.full_name, u.email
+                    FROM usage_logs ul
+                    JOIN users u ON ul.user_id = u.id
+                    WHERE ul.user_id = ?
+                    ORDER BY ul.timestamp DESC
+                """, (user_id,))
+            else:
+                cursor.execute("""
+                    SELECT ul.id, ul.user_id, ul.action, ul.details, ul.timestamp, u.full_name, u.email
+                    FROM usage_logs ul
+                    JOIN users u ON ul.user_id = u.id
+                    ORDER BY ul.timestamp DESC
+                """)
+            
+            logs = []
+            for row in cursor.fetchall():
+                logs.append({
+                    'id': row[0],
+                    'user_id': row[1],
+                    'action': row[2],
+                    'details': row[3],
+                    'timestamp': row[4],
+                    'full_name': row[5],
+                    'email': row[6]
+                })
+            
+            conn.close()
+            return logs
+        except Exception as e:
+            st.error(f"Database error: {e}")
+            return []
+    
+    def update_user_status(user_id, status):
+        """Update user status"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                UPDATE users 
+                SET status = ?, approved_at = ?, approved_by = ?
+                WHERE id = ?
+            """, (status, datetime.now().isoformat(), "admin@unga.org", user_id))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Error updating user status: {e}")
+            return False
+    
+    def delete_user(user_id):
+        """Delete user and all related data"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Delete usage logs first
+            cursor.execute("DELETE FROM usage_logs WHERE user_id = ?", (user_id,))
+            
+            # Delete user
+            cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Error deleting user: {e}")
+            return False
+    
+    def reset_user_password(user_id, new_password):
+        """Reset user password"""
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Hash the new password
+            salt = os.urandom(32)
+            password_hash = hashlib.pbkdf2_hmac('sha256', new_password.encode('utf-8'), salt, 100000)
+            password_hash_str = salt.hex() + password_hash.hex()
+            
+            cursor.execute("""
+                UPDATE users 
+                SET password_hash = ?
+                WHERE id = ?
+            """, (password_hash_str, user_id))
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            st.error(f"Error resetting password: {e}")
+            return False
+    
+    # Get data
+    all_users = get_all_users()
+    pending_users = [u for u in all_users if u['status'] == 'pending']
+    approved_users = [u for u in all_users if u['status'] == 'approved']
+    denied_users = [u for u in all_users if u['status'] == 'denied']
+    
+    # Statistics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("👥 Total Users", len(all_users))
+    
+    with col2:
+        st.metric("⏳ Pending", len(pending_users))
+    
+    with col3:
+        st.metric("✅ Approved", len(approved_users))
+    
+    with col4:
+        st.metric("❌ Denied", len(denied_users))
+    
+    st.markdown("---")
+    
+    # Tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["Pending Approvals", "All Users", "User Activity", "Password Management"])
+    
+    with tab1:
+        st.markdown("### ⏳ Pending User Approvals")
+        
+        if not pending_users:
+            st.info("No pending user registrations")
+        else:
+            for user in pending_users:
+                with st.expander(f"👤 {user['full_name']} - {user['email']}", expanded=True):
+                    col1, col2 = st.columns([2, 1])
+                    
+                    with col1:
+                        st.markdown(f"**Name:** {user['full_name']}")
+                        st.markdown(f"**Email:** {user['email']}")
+                        st.markdown(f"**Title:** {user['title']}")
+                        st.markdown(f"**Office:** {user['office']}")
+                        st.markdown(f"**Purpose:** {user['purpose']}")
+                        st.markdown(f"**Registered:** {user['created_at']}")
+                    
+                    with col2:
+                        if st.button(f"✅ Approve", key=f"approve_{user['id']}"):
+                            if update_user_status(user['id'], 'approved'):
+                                st.success(f"✅ {user['full_name']} approved!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Failed to approve user")
+                        
+                        if st.button(f"❌ Deny", key=f"deny_{user['id']}"):
+                            if update_user_status(user['id'], 'denied'):
+                                st.success(f"❌ {user['full_name']} denied!")
+                                st.rerun()
+                            else:
+                                st.error("❌ Failed to deny user")
+    
+    with tab2:
+        st.markdown("### 👥 All Users Management")
+        
+        if not all_users:
+            st.info("No users registered")
+        else:
+            # Filter options
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                status_filter = st.selectbox("Filter by Status:", ["All", "Pending", "Approved", "Denied"])
+            
+            with col2:
+                search_term = st.text_input("Search by name or email:")
+            
+            # Filter users
+            filtered_users = all_users
+            if status_filter != "All":
+                filtered_users = [u for u in filtered_users if u['status'] == status_filter.lower()]
+            
+            if search_term:
+                filtered_users = [u for u in filtered_users if 
+                                 search_term.lower() in u['full_name'].lower() or 
+                                 search_term.lower() in u['email'].lower()]
+            
+            # Display users
+            for user in filtered_users:
+                status_color = {
+                    'pending': '🟡',
+                    'approved': '🟢',
+                    'denied': '🔴'
+                }
+                
+                with st.expander(f"{status_color.get(user['status'], '⚪')} {user['full_name']} - {user['email']}"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown(f"**Status:** {user['status'].title()}")
+                        st.markdown(f"**Title:** {user['title']}")
+                        st.markdown(f"**Office:** {user['office']}")
+                        st.markdown(f"**Purpose:** {user['purpose']}")
+                        st.markdown(f"**Registered:** {user['created_at']}")
+                        if user['approved_at']:
+                            st.markdown(f"**Approved:** {user['approved_at']}")
+                        if user['last_login']:
+                            st.markdown(f"**Last Login:** {user['last_login']}")
+                        st.markdown(f"**Login Count:** {user['login_count']}")
+                    
+                    with col2:
+                        # Action buttons
+                        if user['status'] == 'pending':
+                            if st.button(f"✅ Approve", key=f"approve_all_{user['id']}"):
+                                if update_user_status(user['id'], 'approved'):
+                                    st.success("User approved!")
+                                    st.rerun()
+                        
+                        if st.button(f"🗑️ Delete User", key=f"delete_{user['id']}"):
+                            if delete_user(user['id']):
+                                st.success("User deleted successfully!")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete user")
+    
+    with tab3:
+        st.markdown("### 📊 User Activity & Usage Analytics")
+        
+        # User selection
+        user_options = {f"{u['full_name']} ({u['email']})": u['id'] for u in approved_users}
+        
+        if user_options:
+            selected_user_name = st.selectbox("Select User:", list(user_options.keys()))
+            
+            if selected_user_name:
+                user_id = user_options[selected_user_name]
+                user = next(u for u in approved_users if u['id'] == user_id)
+                
+                # Get usage logs for this user
+                logs = get_usage_logs(user_id)
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Total Activities", len(logs))
+                
+                with col2:
+                    login_count = user['login_count']
+                    st.metric("Login Count", login_count)
+                
+                with col3:
+                    last_login = user['last_login'] if user['last_login'] else 'Never'
+                    st.metric("Last Login", last_login)
+                
+                # Recent activities
+                st.markdown("#### Recent Activities")
+                if logs:
+                    for log in logs[:20]:  # Show last 20 activities
+                        st.markdown(f"**{log['action']}** - {log['timestamp']} - {log['details']}")
+                else:
+                    st.info("No activities recorded for this user")
+        else:
+            st.info("No approved users to analyze")
+    
+    with tab4:
+        st.markdown("### 🔐 Password Management")
+        
+        if not all_users:
+            st.info("No users to manage")
+        else:
+            # User selection for password reset
+            user_options = {f"{u['full_name']} ({u['email']})": u['id'] for u in all_users}
+            selected_user_name = st.selectbox("Select User for Password Reset:", list(user_options.keys()))
+            
+            if selected_user_name:
+                user_id = user_options[selected_user_name]
+                user = next(u for u in all_users if u['id'] == user_id)
+                
+                st.markdown(f"**Resetting password for:** {user['full_name']} ({user['email']})")
+                
+                new_password = st.text_input("New Password:", type="password")
+                confirm_password = st.text_input("Confirm Password:", type="password")
+                
+                if st.button("🔐 Reset Password"):
+                    if not new_password:
+                        st.error("Please enter a new password")
+                    elif new_password != confirm_password:
+                        st.error("Passwords do not match")
+                    elif len(new_password) < 6:
+                        st.error("Password must be at least 6 characters")
+                    else:
+                        if reset_user_password(user_id, new_password):
+                            st.success(f"✅ Password reset successfully for {user['full_name']}")
+                            st.info(f"📧 New password: {new_password}")
+                        else:
+                            st.error("❌ Failed to reset password")
 
 
 if __name__ == "__main__":

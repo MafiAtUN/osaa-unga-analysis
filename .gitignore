@@ -68,6 +68,10 @@ logs/
 !unga_vector_sample.db
 # Exclude the main database (too large for GitHub)
 unga_vector.db
+# Exclude user authentication database (contains sensitive data)
+user_auth.db
+# But include a sample version for development
+!user_auth_sample.db
 
 # Streamlit
 .streamlit/
