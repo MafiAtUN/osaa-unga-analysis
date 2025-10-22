@@ -26,10 +26,10 @@ st.set_page_config(
 )
 
 # Import our modules from the new package structure
-from src.unga_analysis.core.prompts import SYSTEM_MESSAGE, build_user_prompt, get_question_set, build_chat_prompt
-from src.unga_analysis.core.classify import infer_classification, get_au_members
+from src.unga_analysis.core.prompts import SYSTEM_MESSAGE, build_user_prompt, build_chat_prompt
+from src.unga_analysis.core.classify import get_au_members
 from src.unga_analysis.data.ingest import extract_text_from_file, validate_text_length
-from src.unga_analysis.core.llm import run_analysis, get_available_models, OpenAIError, chunk_and_synthesize
+from src.unga_analysis.core.llm import run_analysis, get_available_models, OpenAIError
 from src.unga_analysis.data.simple_vector_storage import simple_vector_storage as db_manager
 from src.unga_analysis.utils.sdg_utils import extract_sdgs, detect_africa_mention, format_sdgs
 from src.unga_analysis.core.openai_client import get_openai_client, get_whisper_client
