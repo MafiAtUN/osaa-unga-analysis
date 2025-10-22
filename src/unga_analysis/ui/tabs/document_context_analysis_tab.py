@@ -18,6 +18,27 @@ from src.unga_analysis.data.simple_vector_storage import simple_vector_storage a
 from src.unga_analysis.utils.export_utils import create_export_files
 from src.unga_analysis.core.prompts import build_user_prompt
 
+# Import OpenAI client creation
+import openai
+from dotenv import load_dotenv
+load_dotenv()
+
+
+def get_openai_client():
+    """Get Azure OpenAI client."""
+    api_key = os.getenv('AZURE_OPENAI_API_KEY')
+    endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
+    api_version = os.getenv('AZURE_OPENAI_API_VERSION', '2024-12-01-preview')
+    
+    if not api_key or not endpoint:
+        raise ValueError("Azure OpenAI credentials not found in environment variables")
+    
+    return openai.AzureOpenAI(
+        api_key=api_key,
+        azure_endpoint=endpoint,
+        api_version=api_version
+    )
+
 
 def render_document_context_analysis_tab():
     """Render the document context analysis tab."""
@@ -260,7 +281,8 @@ def process_document_analysis_simple(
         analysis_result = run_analysis(
             system_msg=system_message,
             user_msg=final_prompt,
-            model=model
+            model=model,
+            client=get_openai_client()
         )
         
         if analysis_result:
