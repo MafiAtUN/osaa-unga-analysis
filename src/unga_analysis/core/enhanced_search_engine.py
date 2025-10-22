@@ -8,7 +8,6 @@ import re
 import json
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
-import numpy as np
 from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
