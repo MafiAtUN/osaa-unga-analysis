@@ -7,7 +7,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from cross_year_analysis import cross_year_manager
+from ..data.cross_year_analysis import cross_year_manager
 
 
 def render_country_selection():
@@ -138,10 +138,7 @@ def render_data_availability_info():
         with col4:
             # Count AU members from all years
             au_count = 0
-            for year_stats in data_summary.get('year_statistics', {}).values():
-                if isinstance(year_stats, dict) and 'au_members' in year_stats:
-                    au_count += year_stats['au_members']
-            st.metric("🇦🇺 AU Members", au_count)
+            # AU Members metric removed as requested
     else:
         st.info("📊 No data available yet. Upload speech files to see statistics.")
 

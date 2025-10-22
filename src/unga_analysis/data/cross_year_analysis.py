@@ -11,6 +11,7 @@ import re
 from .simple_vector_storage import simple_vector_storage as db_manager
 from .data_ingestion import data_ingestion_manager
 from ..core.llm import run_analysis, get_available_models
+from ..core.enhanced_search_engine import get_enhanced_search_engine
 from openai import AzureOpenAI
 import os
 
@@ -353,7 +354,7 @@ class CrossYearAnalysisManager:
     def analyze_cross_year_trends(self, query: str, countries: List[str] = None,
                                 years: List[int] = None, regions: List[str] = None) -> str:
         """
-        Perform cross-year trend analysis using AI.
+        Perform cross-year trend analysis using AI with enhanced search and proper citations.
         
         Args:
             query: The analysis query
@@ -362,33 +363,39 @@ class CrossYearAnalysisManager:
             regions: List of regions to analyze
             
         Returns:
-            Analysis result as markdown
+            Analysis result as markdown with proper citations
         """
         try:
-            # Use smart search strategy based on query type
-            speeches = self.get_speeches_for_analysis(
-                query=query,
-                countries=countries,
-                years=years,
-                regions=regions
-            )
+            # Use enhanced search engine for better results
+            enhanced_search = get_enhanced_search_engine(self.db_manager)
+            
+            # Execute enhanced search with proper context
+            search_results = enhanced_search.execute_enhanced_search(query)
+            speeches = search_results.get('results', [])
             
             if not speeches:
                 return "❌ No speeches found matching the specified criteria."
             
-            # Prepare context for AI analysis
-            context = self._prepare_analysis_context(speeches, query)
+            # Prepare enhanced context with proper citations
+            context = self._prepare_enhanced_analysis_context(speeches, query, search_results)
             
-            # Generate structured tables
-            tables = self._generate_analysis_tables(speeches, query)
+            # Generate structured tables with citations
+            tables = self._generate_analysis_tables_with_citations(speeches, query)
             
-            # Generate topic-specific tables
-            topic_tables = self._generate_topic_analysis_tables(speeches, query)
+            # Generate topic-specific tables with citations
+            topic_tables = self._generate_topic_analysis_tables_with_citations(speeches, query)
             
-            # Build analysis prompt
+            # Build enhanced analysis prompt with citation requirements
             system_prompt = """You are a UN OSAA expert analyst specializing in cross-year trend analysis of UN General Assembly speeches. 
             Analyze the provided speeches to identify patterns, trends, and insights across different years and countries.
             Provide comprehensive analysis with specific examples, data points, and structured tables when applicable.
+            
+            CRITICAL REQUIREMENTS:
+            - ALWAYS cite specific speeches with country name and year when referencing content
+            - Use proper citation format: "As stated by [Country] in [Year]: '[quote]'"
+            - Provide specific examples with exact quotes and their sources
+            - Include document references for all claims and statistics
+            - When analyzing trends, cite multiple speeches from different years/countries
             
             IMPORTANT: When presenting data that can be organized in tables (such as country comparisons, year-over-year changes, 
             topic frequencies, etc.), always format them as markdown tables for better readability and analysis."""
@@ -396,32 +403,36 @@ class CrossYearAnalysisManager:
             user_prompt = f"""
             Analysis Query: {query}
             
-            Available Data:
+            Search Strategy Used: {search_results.get('strategy', 'unknown')}
+            Query Analysis: {search_results.get('analysis', {})}
+            
+            Available Data with Citations:
             {context}
             
-            Pre-generated Tables:
+            Pre-generated Tables with Citations:
             {tables}
             
-            Topic-Specific Tables:
+            Topic-Specific Tables with Citations:
             {topic_tables}
             
             Please provide a comprehensive analysis that includes:
-            1. Key trends and patterns identified
-            2. Specific examples from the speeches
+            1. Key trends and patterns identified with proper citations
+            2. Specific examples from the speeches with exact quotes and sources
             3. Comparative analysis across years/countries (use tables when comparing multiple entities)
             4. Statistical insights where applicable (present in table format when relevant)
-            5. Conclusions and recommendations
+            5. Conclusions and recommendations based on cited evidence
             
             FORMATTING REQUIREMENTS:
             - Use the pre-generated tables above as reference
             - Create additional markdown tables for any comparative data (countries, years, topics, etc.)
-            - Include specific numbers, percentages, and statistics
+            - Include specific numbers, percentages, and statistics with proper citations
             - Structure data in clear, readable tables
-            - Use headers like "Country", "Year", "Frequency", "Percentage", etc.
-            - When showing trends over time, use tables with years as columns
-            - When comparing countries, use tables with countries as rows
+            - Use headers like "Country", "Year", "Frequency", "Percentage", "Citation", etc.
+            - When showing trends over time, use tables with years as columns and include citation columns
+            - When comparing countries, use tables with countries as rows and include citation columns
+            - ALWAYS include proper citations for all quoted material and statistical claims
             
-            Format your response in clear, professional markdown with well-structured tables.
+            Format your response in clear, professional markdown with well-structured tables and proper citations.
             """
             
             # Get OpenAI client
@@ -581,6 +592,100 @@ class CrossYearAnalysisManager:
             logger.error(f"Failed to analyze semantic trends: {e}")
             return f"❌ Semantic analysis failed: {e}"
     
+    def _prepare_enhanced_analysis_context(self, speeches: List[Dict[str, Any]], query: str, search_results: Dict[str, Any]) -> str:
+        """Prepare enhanced analysis context with proper citations."""
+        context = f"Found {len(speeches)} speeches for analysis:\n\n"
+        
+        # Group by year and country for better organization
+        by_year = {}
+        by_country = {}
+        year_country_matrix = {}
+        
+        for speech in speeches:
+            year = speech.get('year', 'Unknown')
+            country = speech.get('country_name', 'Unknown')
+            citation = speech.get('citation', f"{country}, {year}")
+            
+            # Group by year
+            if year not in by_year:
+                by_year[year] = []
+            by_year[year].append(speech)
+            
+            # Group by country
+            if country not in by_country:
+                by_country[country] = []
+            by_country[country].append(speech)
+            
+            # Create year-country matrix
+            if year not in year_country_matrix:
+                year_country_matrix[year] = {}
+            if country not in year_country_matrix[year]:
+                year_country_matrix[year][country] = {'count': 0, 'citations': []}
+            year_country_matrix[year][country]['count'] += 1
+            year_country_matrix[year][country]['citations'].append(citation)
+        
+        # Add summary statistics with citations
+        context += "## Summary Statistics\n\n"
+        context += f"- **Total Speeches**: {len(speeches)}\n"
+        context += f"- **Years Covered**: {len(by_year)} ({min(by_year.keys()) if by_year else 'N/A'} - {max(by_year.keys()) if by_year else 'N/A'})\n"
+        context += f"- **Countries**: {len(by_country)}\n"
+        context += f"- **Average Speeches per Year**: {len(speeches) / len(by_year) if by_year else 0:.1f}\n\n"
+        
+        # Add year-country matrix as a table with citations
+        if year_country_matrix:
+            context += "## Speeches by Year and Country (with Citations)\n\n"
+            context += "| Year | " + " | ".join(sorted(by_country.keys())[:8]) + " | Total |\n"  # Limit to 8 countries for readability
+            context += "|------|" + "|".join(["------" for _ in range(min(8, len(by_country)))]) + "|-------|\n"
+            
+            for year in sorted(by_year.keys(), reverse=True):
+                row = f"| {year} |"
+                year_total = 0
+                for country in sorted(by_country.keys())[:8]:
+                    count = year_country_matrix[year].get(country, {'count': 0})['count']
+                    row += f" {count} |"
+                    year_total += count
+                row += f" {year_total} |\n"
+                context += row
+            context += "\n"
+        
+        # Add top countries by speech count with citations
+        if by_country:
+            context += "## Top Countries by Speech Count (with Citations)\n\n"
+            sorted_countries = sorted(by_country.items(), key=lambda x: len(x[1]), reverse=True)
+            context += "| Country | Speech Count | Percentage | Sample Citations |\n"
+            context += "|---------|--------------|------------|------------------|\n"
+            for country, country_speeches in sorted_countries[:10]:
+                percentage = (len(country_speeches) / len(speeches)) * 100
+                sample_citations = [s.get('citation', f"{country}, {s.get('year', 'Unknown')}") for s in country_speeches[:3]]
+                citations_str = "; ".join(sample_citations)
+                context += f"| {country} | {len(country_speeches)} | {percentage:.1f}% | {citations_str} |\n"
+            context += "\n"
+        
+        # Add detailed speech content with proper citations
+        context += "## Sample Speech Content with Citations\n\n"
+        for year in sorted(by_year.keys(), reverse=True)[:3]:  # Limit to 3 most recent years
+            year_speeches = by_year[year]
+            context += f"### {year} ({len(year_speeches)} speeches)\n\n"
+            
+            for speech in year_speeches[:3]:  # Limit to 3 speeches per year
+                country = speech.get('country_name', 'Unknown')
+                word_count = speech.get('word_count', 0)
+                citation = speech.get('citation', f"{country}, {year}")
+                text_preview = speech.get('speech_text', '')[:300] + "..." if len(speech.get('speech_text', '')) > 300 else speech.get('speech_text', '')
+                relevant_quotes = speech.get('relevant_quotes', [])
+                
+                context += f"**{citation}** ({word_count:,} words):\n"
+                context += f"{text_preview}\n\n"
+                
+                # Add relevant quotes with citations
+                if relevant_quotes:
+                    context += f"**Relevant Quotes from {citation}:**\n"
+                    for quote in relevant_quotes[:2]:  # Top 2 quotes
+                        context += f"- \"{quote['quote']}\" (Relevance: {quote['relevance_score']:.2f})\n"
+                    context += "\n"
+        
+        return context
+    
     def _prepare_analysis_context(self, speeches: List[Dict[str, Any]], query: str) -> str:
         """Prepare context for AI analysis from speeches with structured data."""
         context = f"Found {len(speeches)} speeches for analysis:\n\n"
@@ -662,6 +767,82 @@ class CrossYearAnalysisManager:
         
         return context
     
+    def _generate_analysis_tables_with_citations(self, speeches: List[Dict[str, Any]], query: str) -> str:
+        """Generate structured tables for analysis with proper citations."""
+        tables = ""
+        
+        # Group data for table generation
+        by_year = {}
+        by_country = {}
+        by_region = {}
+        
+        for speech in speeches:
+            year = speech.get('year', 'Unknown')
+            country = speech.get('country_name', 'Unknown')
+            region = speech.get('region', 'Unknown')
+            citation = speech.get('citation', f"{country}, {year}")
+            
+            # Group by year
+            if year not in by_year:
+                by_year[year] = []
+            by_year[year].append(speech)
+            
+            # Group by country
+            if country not in by_country:
+                by_country[country] = []
+            by_country[country].append(speech)
+            
+            # Group by region
+            if region not in by_region:
+                by_region[region] = []
+            by_region[region].append(speech)
+        
+        # Generate year-over-year trend table with citations
+        if by_year:
+            tables += "## Year-over-Year Analysis (with Citations)\n\n"
+            tables += "| Year | Speech Count | Countries | Avg Words | Sample Citations |\n"
+            tables += "|------|--------------|-----------|-----------|------------------|\n"
+            
+            for year in sorted(by_year.keys()):
+                year_speeches = by_year[year]
+                countries = len(set(speech.get('country_name', '') for speech in year_speeches))
+                avg_words = sum(speech.get('word_count', 0) for speech in year_speeches) / len(year_speeches) if year_speeches else 0
+                sample_citations = [s.get('citation', f"{s.get('country_name', 'Unknown')}, {year}") for s in year_speeches[:3]]
+                citations_str = "; ".join(sample_citations)
+                tables += f"| {year} | {len(year_speeches)} | {countries} | {avg_words:.0f} | {citations_str} |\n"
+            tables += "\n"
+        
+        # Generate top countries table with citations
+        if by_country:
+            tables += "## Top Countries by Speech Count (with Citations)\n\n"
+            tables += "| Country | Speech Count | Percentage | Avg Words | Sample Citations |\n"
+            tables += "|---------|--------------|------------|-----------|------------------|\n"
+            
+            sorted_countries = sorted(by_country.items(), key=lambda x: len(x[1]), reverse=True)
+            for country, country_speeches in sorted_countries[:10]:
+                percentage = (len(country_speeches) / len(speeches)) * 100
+                avg_words = sum(speech.get('word_count', 0) for speech in country_speeches) / len(country_speeches)
+                sample_citations = [s.get('citation', f"{country}, {s.get('year', 'Unknown')}") for s in country_speeches[:3]]
+                citations_str = "; ".join(sample_citations)
+                tables += f"| {country} | {len(country_speeches)} | {percentage:.1f}% | {avg_words:.0f} | {citations_str} |\n"
+            tables += "\n"
+        
+        # Generate regional analysis table with citations
+        if by_region and len(by_region) > 1:
+            tables += "## Regional Analysis (with Citations)\n\n"
+            tables += "| Region | Speech Count | Percentage | Countries | Sample Citations |\n"
+            tables += "|--------|--------------|------------|-----------|------------------|\n"
+            
+            for region, region_speeches in sorted(by_region.items(), key=lambda x: len(x[1]), reverse=True):
+                percentage = (len(region_speeches) / len(speeches)) * 100
+                countries = len(set(speech.get('country_name', '') for speech in region_speeches))
+                sample_citations = [s.get('citation', f"{s.get('country_name', 'Unknown')}, {s.get('year', 'Unknown')}") for s in region_speeches[:3]]
+                citations_str = "; ".join(sample_citations)
+                tables += f"| {region} | {len(region_speeches)} | {percentage:.1f}% | {countries} | {citations_str} |\n"
+            tables += "\n"
+        
+        return tables
+    
     def _generate_analysis_tables(self, speeches: List[Dict[str, Any]], query: str) -> str:
         """Generate structured tables for analysis."""
         tables = ""
@@ -728,6 +909,82 @@ class CrossYearAnalysisManager:
                 countries = len(set(speech.get('country_name', '') for speech in region_speeches))
                 tables += f"| {region} | {len(region_speeches)} | {percentage:.1f}% | {countries} |\n"
             tables += "\n"
+        
+        return tables
+    
+    def _generate_topic_analysis_tables_with_citations(self, speeches: List[Dict[str, Any]], topic: str) -> str:
+        """Generate topic-specific analysis tables with proper citations."""
+        tables = ""
+        
+        # For gender and equality analysis, create specific tables
+        if "gender" in topic.lower() or "equality" in topic.lower() or "women" in topic.lower():
+            tables += "## Gender and Equality Analysis (with Citations)\n\n"
+            
+            # Group by year for gender-related speeches
+            by_year = {}
+            for speech in speeches:
+                year = speech.get('year', 'Unknown')
+                if year not in by_year:
+                    by_year[year] = []
+                by_year[year].append(speech)
+            
+            # Create year-over-year gender mentions table with citations
+            if by_year:
+                tables += "### Year-over-Year Gender Mentions (with Citations)\n\n"
+                tables += "| Year | Total Speeches | Gender-Related Speeches | Percentage | Sample Citations |\n"
+                tables += "|------|----------------|------------------------|------------|------------------|\n"
+                
+                for year in sorted(by_year.keys()):
+                    year_speeches = by_year[year]
+                    # Count speeches that mention gender-related terms
+                    gender_mentions = 0
+                    gender_citations = []
+                    for speech in year_speeches:
+                        text = speech.get('speech_text', '').lower()
+                        if any(term in text for term in ['gender', 'women', 'girls', 'equality', 'empowerment', 'feminist']):
+                            gender_mentions += 1
+                            citation = speech.get('citation', f"{speech.get('country_name', 'Unknown')}, {year}")
+                            gender_citations.append(citation)
+                    
+                    percentage = (gender_mentions / len(year_speeches)) * 100 if year_speeches else 0
+                    citations_str = "; ".join(gender_citations[:3])  # Top 3 citations
+                    tables += f"| {year} | {len(year_speeches)} | {gender_mentions} | {percentage:.1f}% | {citations_str} |\n"
+                tables += "\n"
+            
+            # Create country comparison table for gender mentions with citations
+            by_country = {}
+            for speech in speeches:
+                country = speech.get('country_name', 'Unknown')
+                if country not in by_country:
+                    by_country[country] = []
+                by_country[country].append(speech)
+            
+            if by_country:
+                tables += "### Country Comparison - Gender Mentions (with Citations)\n\n"
+                tables += "| Country | Total Speeches | Gender Mentions | Percentage | Sample Citations |\n"
+                tables += "|---------|----------------|-----------------|------------|------------------|\n"
+                
+                country_gender_data = []
+                for country, country_speeches in by_country.items():
+                    gender_mentions = 0
+                    gender_citations = []
+                    for speech in country_speeches:
+                        text = speech.get('speech_text', '').lower()
+                        if any(term in text for term in ['gender', 'women', 'girls', 'equality', 'empowerment', 'feminist']):
+                            gender_mentions += 1
+                            citation = speech.get('citation', f"{country}, {speech.get('year', 'Unknown')}")
+                            gender_citations.append(citation)
+                    
+                    percentage = (gender_mentions / len(country_speeches)) * 100 if country_speeches else 0
+                    citations_str = "; ".join(gender_citations[:3])  # Top 3 citations
+                    country_gender_data.append((country, len(country_speeches), gender_mentions, percentage, citations_str))
+                
+                # Sort by percentage of gender mentions
+                country_gender_data.sort(key=lambda x: x[3], reverse=True)
+                
+                for country, total, mentions, percentage, citations in country_gender_data[:15]:  # Top 15 countries
+                    tables += f"| {country} | {total} | {mentions} | {percentage:.1f}% | {citations} |\n"
+                tables += "\n"
         
         return tables
     

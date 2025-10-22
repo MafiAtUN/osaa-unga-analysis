@@ -286,10 +286,7 @@ def render_data_explorer_tab():
     with col4:
         # Count AU members from all years
         au_count = 0
-        for year_stats in data_summary.get('year_statistics', {}).values():
-            if isinstance(year_stats, dict) and 'au_members' in year_stats:
-                au_count += year_stats['au_members']
-        st.metric("🇦🇺 AU Members", au_count)
+        # AU Members metric removed as requested
     
     st.markdown("---")
     
