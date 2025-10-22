@@ -7,8 +7,8 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from typing import Dict, List
-from cross_year_analysis import CrossYearAnalysisManager
-from data_limitation_handler import data_limitation_handler
+from src.unga_analysis.data.cross_year_analysis import CrossYearAnalysisManager
+from src.unga_analysis.utils.data_limitation_handler import data_limitation_handler
 
 
 def get_cross_year_topics_and_questions() -> Dict[str, List[str]]:
