@@ -473,6 +473,12 @@ def main():
     )
 
 
+def render_error_insights_tab():
+    """Render the Error Insights tab."""
+    from src.unga_analysis.ui.tabs.error_insights_tab import render_error_insights_tab
+    render_error_insights_tab()
+
+
 if __name__ == "__main__":
     main()
 
