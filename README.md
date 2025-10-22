@@ -234,16 +234,25 @@ APP_PASSWORD=your_app_password
 - **Database lock errors**: Restart the application if you see DuckDB lock errors
 - **Import errors**: Make sure all dependencies are installed with `pip install -r requirements.txt`
 - **Authentication issues**: Check that `APP_PASSWORD` is set in your `.env` file
+- **Database not found**: Run `python setup_database.py` to set up your database
+- **Large database size**: Use the sample database for testing, full database for production
 
 ### **Performance Tips**
 - **Large files**: For files >50MB, consider splitting into smaller chunks
 - **Multiple uploads**: Process files one at a time for better performance
 - **Browser compatibility**: Use modern browsers (Chrome, Firefox, Safari) for best experience
 
+### **Database Troubleshooting**
+- **Check database status**: Run `python check_database.py` to see your current setup
+- **Sample database**: Use `python setup_database.py` and choose option 1 for quick testing
+- **Full database**: Choose option 2 for complete functionality (requires 802MB)
+- **Database corruption**: Delete `unga_vector.db` and run setup again
+
 ### **Support**
 - Check the **Error Insights** tab for detailed error information
 - Review application logs in the `logs/` directory
 - Ensure all environment variables are properly configured
+- Use `python check_database.py` to diagnose database issues
 
 ## 📄 License
 
