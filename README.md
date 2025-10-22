@@ -21,13 +21,13 @@ A production-ready Streamlit application for analyzing UN General Assembly speec
 
 2. **Set up environment variables**:
    ```bash
-   cp src/unga_analysis/config/env.template .env
+   cp env.template .env
    # Edit .env with your API keys
    ```
 
 3. **Run the application**:
    ```bash
-   streamlit run app_refactored.py
+   streamlit run app.py
    ```
 
 4. **Access the app**: Open http://localhost:8501 in your browser
