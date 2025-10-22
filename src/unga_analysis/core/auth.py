@@ -81,7 +81,7 @@ def validate_file_upload(file_bytes: bytes, filename: str) -> bool:
 
 def authenticate_user(password: str) -> bool:
     """Authenticate user with password."""
-    correct_password = os.getenv("APP_PASSWORD", "default_password")
+    correct_password = os.getenv("APP_PASSWORD", "dev_password_123")  # Development only
     return password == correct_password
 
 

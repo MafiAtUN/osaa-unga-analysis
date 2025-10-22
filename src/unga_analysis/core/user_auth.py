@@ -87,7 +87,8 @@ class UserAuthManager:
         # Initialize admin password if not exists
         cursor.execute("SELECT value FROM admin_settings WHERE key = 'admin_password'")
         if not cursor.fetchone():
-            default_admin_password = "unga_admin_2025"  # Change this in production
+            # Get admin password from environment variable
+            default_admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')  # Default for development only
             admin_hash = self._hash_password(default_admin_password)
             cursor.execute("INSERT INTO admin_settings (key, value) VALUES (?, ?)", 
                          ("admin_password", admin_hash))
