@@ -64,14 +64,10 @@ logs/
 *.db
 *.sqlite
 *.sqlite3
-# But include the sample database
-!unga_vector_sample.db
-# Exclude the main database (too large for GitHub)
-unga_vector.db
-# Exclude user authentication database (contains sensitive data)
-user_auth.db
-# But include a sample version for development
-!user_auth_sample.db
+# Exclude all databases for security (contains sensitive data)
+# But allow backup databases for development
+!unga_vector_backup.db
+!user_auth_backup.db
 
 # Streamlit
 .streamlit/
