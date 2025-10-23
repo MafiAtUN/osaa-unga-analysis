@@ -117,6 +117,7 @@ def render_document_context_analysis_tab():
                 model = st.selectbox(
                     "AI Model:",
                     options=available_models,
+                    key="document_context_model_select",
                     index=0,
                     help="Select the AI model for analysis"
                 )
@@ -129,6 +130,7 @@ def render_document_context_analysis_tab():
             analysis_depth = st.selectbox(
                 "Analysis Depth:",
                 options=["Quick", "Standard", "Deep", "Comprehensive"],
+                key="document_context_analysis_depth_select",
                 index=2,
                 help="Choose the depth of analysis"
             )

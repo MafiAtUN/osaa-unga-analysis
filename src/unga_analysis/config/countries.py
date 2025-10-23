@@ -6,61 +6,42 @@ from typing import List
 
 
 def get_all_countries() -> List[str]:
-    """Get comprehensive list of all world countries and entities."""
+    """Get comprehensive list of all countries from the UNGA database."""
+    # This list is generated from the actual database to ensure perfect mapping
     all_countries = [
-        # African Countries (AU Members)
-        "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", "Cameroon", "Cape Verde", 
-        "Central African Republic", "Chad", "Comoros", "Democratic Republic of the Congo", "Republic of the Congo",
-        "Djibouti", "Egypt", "Equatorial Guinea", "Eritrea", "Eswatini", "Ethiopia", "Gabon", "Gambia",
-        "Ghana", "Guinea", "Guinea-Bissau", "Ivory Coast", "Kenya", "Lesotho", "Liberia", "Libya",
-        "Madagascar", "Malawi", "Mali", "Mauritania", "Mauritius", "Morocco", "Mozambique", "Namibia",
-        "Niger", "Nigeria", "Rwanda", "São Tomé and Príncipe", "Senegal", "Seychelles", "Sierra Leone",
-        "Somalia", "South Africa", "South Sudan", "Sudan", "Tanzania", "Togo", "Tunisia", "Uganda",
-        "Zambia", "Zimbabwe",
-        
-        # North America
-        "United States", "Canada", "Mexico", "Guatemala", "Belize", "El Salvador", "Honduras", "Nicaragua",
-        "Costa Rica", "Panama", "Cuba", "Jamaica", "Haiti", "Dominican Republic", "Trinidad and Tobago",
-        "Barbados", "Saint Lucia", "Grenada", "Saint Vincent and the Grenadines", "Antigua and Barbuda",
-        "Dominica", "Saint Kitts and Nevis", "Bahamas",
-        
-        # South America
-        "Brazil", "Argentina", "Chile", "Colombia", "Peru", "Venezuela", "Ecuador", "Bolivia", "Paraguay",
-        "Uruguay", "Guyana", "Suriname", "French Guiana",
-        
-        # Europe
-        "United Kingdom", "France", "Germany", "Italy", "Spain", "Netherlands", "Belgium", "Switzerland",
-        "Austria", "Sweden", "Norway", "Denmark", "Finland", "Poland", "Czech Republic", "Slovakia",
-        "Hungary", "Romania", "Bulgaria", "Croatia", "Slovenia", "Estonia", "Latvia", "Lithuania",
-        "Portugal", "Greece", "Ireland", "Luxembourg", "Malta", "Cyprus", "Iceland", "Liechtenstein",
-        "Monaco", "San Marino", "Vatican City", "Andorra", "Albania", "Bosnia and Herzegovina", "Montenegro",
-        "North Macedonia", "Serbia", "Kosovo", "Moldova", "Ukraine", "Belarus", "Russia",
-        
-        # Asia
-        "China", "Japan", "South Korea", "North Korea", "Mongolia", "India", "Pakistan", "Bangladesh",
-        "Sri Lanka", "Nepal", "Bhutan", "Afghanistan", "Kazakhstan", "Kyrgyzstan", "Tajikistan",
-        "Turkmenistan", "Uzbekistan", "Iran", "Iraq", "Turkey", "Syria", "Lebanon", "Jordan", "Israel",
-        "Palestine", "Saudi Arabia", "United Arab Emirates", "Qatar", "Bahrain", "Kuwait", "Oman",
-        "Yemen", "Thailand", "Vietnam", "Laos", "Cambodia", "Myanmar", "Malaysia", "Singapore",
-        "Indonesia", "Philippines", "Brunei", "East Timor", "Taiwan", "Hong Kong", "Macau",
-        
-        # Oceania
-        "Australia", "New Zealand", "Papua New Guinea", "Fiji", "Solomon Islands", "Vanuatu", "Samoa",
-        "Tonga", "Kiribati", "Tuvalu", "Nauru", "Palau", "Marshall Islands", "Micronesia",
-        
-        # International Organizations and Entities
-        "UN Secretary-General", "President of the General Assembly", "European Union", "African Union",
-        "Organization of Islamic Cooperation", "Non-Aligned Movement", "G77", "Group of 20", "BRICS",
-        "OECD", "World Bank", "International Monetary Fund", "World Health Organization",
-        "United Nations Development Programme", "United Nations Children's Fund", "World Food Programme",
-        "United Nations Educational, Scientific and Cultural Organization", "International Labour Organization",
-        "International Atomic Energy Agency", "World Trade Organization", "North Atlantic Treaty Organization",
-        "Association of Southeast Asian Nations", "Caribbean Community", "Pacific Islands Forum",
-        "Arab League", "Gulf Cooperation Council", "Shanghai Cooperation Organization"
+        "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda",
+        "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain",
+        "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan",
+        "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria",
+        "Burkina Faso", "Burundi", "Cambodia", "Cameroon", "Canada", "Cape Verde",
+        "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros",
+        "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Czechoslovakia",
+        "Côte d'Ivoire", "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica",
+        "Dominican Republic", "East Germany", "Ecuador", "Egypt", "El Salvador",
+        "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji",
+        "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece",
+        "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras",
+        "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel",
+        "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kuwait",
+        "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+        "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia",
+        "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico",
+        "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique",
+        "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua",
+        "Niger", "Nigeria", "North Korea", "North Macedonia", "Norway", "Oman", "Pakistan",
+        "Palau", "Palestine", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines",
+        "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis",
+        "Saint Lucia", "Saint Vincent and the Grenadines", "Samoa", "San Marino", "Saudi Arabia",
+        "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia",
+        "Solomon Islands", "Somalia", "South Africa", "South Korea", "South Sudan", "Spain",
+        "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "São Tomé and Príncipe",
+        "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago",
+        "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates",
+        "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City",
+        "Venezuela", "Vietnam", "Yemen", "Yemen (Democratic)", "Yugoslavia", "Zambia", "Zimbabwe"
     ]
     
-    # Sort countries alphabetically
-    return sorted(list(set(all_countries)))
+    return all_countries
 
 
 def detect_country_simple(text: str) -> str:

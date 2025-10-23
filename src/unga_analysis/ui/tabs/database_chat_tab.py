@@ -53,6 +53,7 @@ def render_database_chat_tab():
                 "AI Model:",
                 options=available_models,
                 index=0,
+                key="database_chat_model_select",
                 help="Select the AI model for analysis"
             )
         else:
@@ -255,7 +256,7 @@ def extract_topics_from_question(question: str) -> List[str]:
     return topics
 
 
-def search_speeches_by_entities(countries: List[str], years: List[int], topics: List[str], question: str) -> List[Dict[str, Any]]]:
+def search_speeches_by_entities(countries: List[str], years: List[int], topics: List[str], question: str) -> List[Dict[str, Any]]:
     """Search speeches based on extracted entities."""
     try:
         # Build SQL query based on available entities

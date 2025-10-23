@@ -99,9 +99,9 @@ class SimpleVectorStorageManager:
         """)
         
         # Create indexes for performance
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_speeches_country ON speeches(country_code)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_speeches_country_name ON speeches(country_name)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_speeches_year ON speeches(year)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_speeches_region ON speeches(region)")
+        # Note: region column doesn't exist in current database schema
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_country ON analyses(country)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_classification ON analyses(classification)")
         

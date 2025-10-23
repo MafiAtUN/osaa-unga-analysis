@@ -17,16 +17,16 @@ def setup_database():
     print("=" * 50)
     
     # Check if sample database exists
-    sample_db = "unga_vector_sample.db"
+    backup_db = "unga_vector_backup.db"
     main_db = "unga_vector.db"
     
-    if os.path.exists(sample_db):
-        print(f"✅ Found sample database: {sample_db}")
-        print(f"   Size: {os.path.getsize(sample_db) / 1024:.2f} KB")
+    if os.path.exists(backup_db):
+        print(f"✅ Found backup database: {backup_db}")
+        print(f"   Size: {os.path.getsize(backup_db) / 1024:.2f} KB")
         
-        # Ask user if they want to use sample or create full database
+        # Ask user if they want to use backup or create full database
         print("\n📋 Database Options:")
-        print("1. Use sample database (5 speeches) - Quick start")
+        print("1. Use backup database (5 speeches) - Quick start")
         print("2. Create full database (802MB) - Full functionality")
         print("3. Keep existing database if it exists")
         
@@ -38,8 +38,8 @@ def setup_database():
                 shutil.move(main_db, backup_name)
                 print(f"✅ Backed up existing database to {backup_name}")
             
-            shutil.copy(sample_db, main_db)
-            print(f"✅ Using sample database for quick start")
+            shutil.copy(backup_db, main_db)
+            print(f"✅ Using backup database for quick start")
             print("   Note: Limited to 5 sample speeches")
             
         elif choice == "2":

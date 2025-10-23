@@ -8,7 +8,12 @@ import re
 import json
 from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
-from sentence_transformers import SentenceTransformer
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    SentenceTransformer = None
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +26,16 @@ class EnhancedSearchEngine:
         self.embeddings_enabled = False
         
         # Initialize embedding model if available
-        try:
-            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            self.embeddings_enabled = True
-            logger.info("Enhanced search engine initialized with embeddings")
-        except Exception as e:
-            logger.warning(f"Embeddings not available: {e}")
+        if SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+                self.embeddings_enabled = True
+                logger.info("Enhanced search engine initialized with embeddings")
+            except Exception as e:
+                logger.warning(f"Embeddings not available: {e}")
+                self.embeddings_enabled = False
+        else:
+            logger.warning("sentence-transformers not available - using fallback mode")
             self.embeddings_enabled = False
     
     def intelligent_query_analysis(self, query: str) -> Dict[str, Any]:

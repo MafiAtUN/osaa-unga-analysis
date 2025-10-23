@@ -7,6 +7,11 @@ import streamlit as st
 from datetime import datetime
 from typing import Optional
 from ..core.user_auth import user_auth_manager, User
+from .enhanced_ui_components import (
+    render_page_header, render_info_card, render_success_card, 
+    render_warning_card, render_error_card, render_step_guide,
+    render_feature_highlights, render_enhanced_footer
+)
 
 
 def render_auth_interface():
@@ -27,26 +32,63 @@ def render_auth_interface():
 
 
 def render_login_page():
-    """Render the login page."""
-    st.title("🔐 UNGA Analysis App - Login")
-    st.markdown("**Sign in to access the UNGA Analysis Platform**")
+    """Render the enhanced login page."""
+    # Enhanced page header
+    render_page_header(
+        "🔐 UNGA Analysis Platform",
+        "Sign in to access advanced speech analysis tools"
+    )
     
+    # Welcome information
+    render_info_card(
+        "Welcome to UNGA Analysis",
+        "This platform provides AI-powered analysis of UN General Assembly speeches. Sign in to access advanced features including document analysis, cross-year comparisons, and interactive visualizations."
+    )
+    
+    # Login form with enhanced styling
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("### Sign In")
+        st.markdown("""
+        <div style="
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        ">
+            <h3 style="text-align: center; color: #1f77b4; margin-bottom: 20px;">
+                🔑 Sign In
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         with st.form("login_form"):
-            email = st.text_input("Email Address:", placeholder="your.email@un.org")
-            password = st.text_input("Password:", type="password")
+            email = st.text_input(
+                "Email Address:", 
+                placeholder="your.email@un.org",
+                help="Enter your UN email address"
+            )
+            password = st.text_input(
+                "Password:", 
+                type="password",
+                help="Enter your password"
+            )
             
             col_login, col_register = st.columns(2)
             
             with col_login:
-                login_clicked = st.form_submit_button("🔑 Login", use_container_width=True)
+                login_clicked = st.form_submit_button(
+                    "🔑 Login", 
+                    use_container_width=True,
+                    type="primary"
+                )
             
             with col_register:
-                register_clicked = st.form_submit_button("📝 New User? Register", use_container_width=True)
+                register_clicked = st.form_submit_button(
+                    "📝 New User? Register", 
+                    use_container_width=True
+                )
         
         if login_clicked:
             if email and password:
@@ -54,12 +96,21 @@ def render_login_page():
                 if user:
                     st.session_state.user = user
                     user_auth_manager.log_user_activity(user.id, "login")
-                    st.success(f"Welcome back, {user.full_name}!")
+                    render_success_card(
+                        "Login Successful!",
+                        f"Welcome back, {user.full_name}! You can now access all features of the UNGA Analysis platform."
+                    )
                     st.rerun()
                 else:
-                    st.error("❌ Invalid credentials or account not approved")
+                    render_error_card(
+                        "Login Failed",
+                        "Invalid email or password. Please check your credentials and try again."
+                    )
             else:
-                st.warning("Please enter both email and password")
+                render_warning_card(
+                    "Missing Information",
+                    "Please fill in both email and password fields."
+                )
         
         if register_clicked:
             st.session_state.auth_page = 'register'
@@ -68,10 +119,45 @@ def render_login_page():
         # Show registration status if user was redirected
         if 'registration_status' in st.session_state:
             if st.session_state.registration_status['success']:
-                st.success(st.session_state.registration_status['message'])
+                render_success_card(
+                    "Registration Successful!",
+                    st.session_state.registration_status['message']
+                )
             else:
-                st.error(st.session_state.registration_status['message'])
+                render_error_card(
+                    "Registration Failed",
+                    st.session_state.registration_status['message']
+                )
             del st.session_state.registration_status
+    
+    # Feature highlights for new users
+    st.markdown("---")
+    features = [
+        {
+            "icon": "🤖",
+            "title": "AI-Powered Analysis",
+            "description": "Advanced AI analysis of speeches and documents"
+        },
+        {
+            "icon": "📊",
+            "title": "Interactive Visualizations",
+            "description": "Rich charts and data insights"
+        },
+        {
+            "icon": "🌍",
+            "title": "Cross-Year Analysis",
+            "description": "Compare speeches across different years"
+        },
+        {
+            "icon": "🗄️",
+            "title": "Database Chat",
+            "description": "Chat directly with the UNGA database"
+        }
+    ]
+    render_feature_highlights(features)
+    
+    # Enhanced footer
+    render_enhanced_footer()
 
 
 def render_registration_page():

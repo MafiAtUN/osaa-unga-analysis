@@ -301,14 +301,8 @@ def display_relevant_quotes_with_citations(results: List[Dict[str, Any]]):
 
 def get_available_countries() -> List[str]:
     """Get list of available countries from the database."""
-    try:
-        # Get all speeches to extract unique countries
-        all_speeches = db_manager.search_speeches(limit=10000)
-        countries = list(set([speech.get('country_name', 'Unknown') for speech in all_speeches if speech.get('country_name')]))
-        return sorted(countries)
-    except Exception as e:
-        st.error(f"Error getting countries: {e}")
-        return []
+    from src.unga_analysis.utils.country_manager import get_all_countries
+    return get_all_countries()
 
 
 def render_search_suggestions(tab_context: str = "general"):

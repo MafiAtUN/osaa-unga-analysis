@@ -17,6 +17,11 @@ from ..ui_components import (
     render_chat_interface,
     render_export_section
 )
+from ..enhanced_ui_components import (
+    render_info_card, render_success_card, render_warning_card, 
+    render_error_card, render_step_guide, render_loading_spinner,
+    render_tooltip_help, render_progress_bar
+)
 from ...core.auth import validate_file_upload, check_rate_limit
 from ...data.simple_vector_storage import simple_vector_storage as db_manager
 
@@ -50,7 +55,7 @@ def check_existing_data(country: str, year: int) -> Optional[Dict[str, Any]]:
 
 
 def render_new_analysis_tab():
-    """Render the new analysis tab."""
+    """Render the enhanced new analysis tab."""
     st.header("📝 New Analysis")
     st.markdown("**Upload or paste a UN General Assembly speech for AI analysis**")
     
@@ -58,20 +63,58 @@ def render_new_analysis_tab():
     if 'analysis_history' not in st.session_state:
         st.session_state.analysis_history = []
     
+    # Step-by-step guide
+    steps = [
+        {
+            "title": "Upload or Paste Content",
+            "description": "Upload a PDF, DOCX, or MP3 file, or paste text directly"
+        },
+        {
+            "title": "Provide Speech Information", 
+            "description": "Select country, date, and classification details"
+        },
+        {
+            "title": "Choose Analysis Options",
+            "description": "Select AI model and analysis depth"
+        },
+        {
+            "title": "Review and Analyze",
+            "description": "Review settings and start the AI analysis"
+        }
+    ]
+    render_step_guide(steps)
+    
+    # Information card about supported formats
+    render_info_card(
+        "Supported Formats",
+        "Upload PDF documents, Word files (DOCX), or audio files (MP3). You can also paste text directly. The system will automatically extract and analyze the content."
+    )
+    
     # Create two columns for upload and paste
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.markdown("### 📁 Upload File")
+        render_tooltip_help(
+            "File Upload",
+            "Supported formats: PDF, DOCX, MP3. Maximum size: 10MB"
+        )
         uploaded_file = render_upload_section()
     
     with col2:
         st.markdown("### 📝 Paste Text")
+        render_tooltip_help(
+            "Text Input",
+            "Paste speech text directly. Minimum 100 words recommended for best analysis."
+        )
         pasted_text = render_paste_section()
     
     # Check if either input is provided
     if not uploaded_file and not pasted_text:
-        st.info("👆 Please upload a file or paste text to begin analysis.")
+        render_warning_card(
+            "No Content Provided",
+            "Please upload a file or paste text to begin analysis. The system needs content to analyze."
+        )
         return
     
     # Validate file if uploaded
@@ -134,6 +177,7 @@ def render_new_analysis_tab():
         model = st.selectbox(
             "Choose AI Model:",
             options=available_models,
+            key="new_analysis_model_select",
             index=0,
             help="Select the AI model for analysis"
         )
