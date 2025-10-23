@@ -60,14 +60,17 @@ Thumbs.db
 logs/
 *.log
 
-# Database
+# Database - GitHub size limits
+# Locally track all databases for safety, but exclude large ones from GitHub push
 *.db
 *.sqlite
 *.sqlite3
-# Exclude all databases for security (contains sensitive data)
-# But allow backup databases for development
+# Allow backup databases for GitHub (smaller size)
 !unga_vector_backup.db
 !user_auth_backup.db
+# Exclude main databases from GitHub push (too large)
+unga_vector.db
+user_auth.db
 
 # Streamlit
 .streamlit/
