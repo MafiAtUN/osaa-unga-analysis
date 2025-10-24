@@ -211,57 +211,39 @@ def render_metric_cards(metrics: List[Dict[str, Any]]):
             )
 
 def render_enhanced_sidebar():
-    """Render an enhanced sidebar with better organization."""
+    """Render a lean sidebar with essential information."""
     with st.sidebar:
         st.markdown("""
         <div style="
             background: linear-gradient(135deg, #1f77b4, #4a90e2);
             color: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
         ">
-            <h3 style="margin: 0; text-align: center;">
-                🇺🇳 UNGA Analysis
-            </h3>
-            <p style="margin: 5px 0 0 0; text-align: center; opacity: 0.9;">
-                Advanced Speech Analysis Platform
-            </p>
+            <h3 style="margin: 0;">🇺🇳 UNGA Analysis</h3>
         </div>
         """, unsafe_allow_html=True)
         
         # Quick stats
-        st.markdown("### 📊 Quick Stats")
+        st.markdown("### 📊 Database")
         try:
             from src.unga_analysis.data.simple_vector_storage import simple_vector_storage as db_manager
             speeches_count = db_manager.conn.execute('SELECT COUNT(*) FROM speeches').fetchone()[0]
             countries_count = db_manager.conn.execute('SELECT COUNT(DISTINCT country_name) FROM speeches').fetchone()[0]
             
-            st.metric("Total Speeches", f"{speeches_count:,}")
-            st.metric("Countries", f"{countries_count:,}")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Speeches", f"{speeches_count:,}")
+            with col2:
+                st.metric("Countries", f"{countries_count:,}")
         except:
-            st.metric("Total Speeches", "11,094")
-            st.metric("Countries", "200")
-        
-        # Navigation help
-        st.markdown("### 🧭 Navigation Help")
-        st.markdown("""
-        **📝 New Analysis**: Upload documents or paste text for analysis
-        
-        **🌍 Cross-Year**: Compare speeches across different years
-        
-        **📄 Document Context**: Analyze uploaded documents with context
-        
-        **📚 All Analyses**: View and manage past analyses
-        
-        **📊 Visualizations**: Interactive charts and graphs
-        
-        **🗺️ Data Explorer**: Explore the database directly
-        
-        **🗄️ Database Chat**: Chat with the UNGA database
-        
-        **🔍 Error Insights**: System monitoring and debugging
-        """)
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Speeches", "11,094")
+            with col2:
+                st.metric("Countries", "200")
 
 def render_loading_spinner(message: str = "Processing..."):
     """Render a custom loading spinner with message."""

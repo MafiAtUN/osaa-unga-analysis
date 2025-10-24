@@ -23,7 +23,6 @@ pdfminer.six>=20221105
 pydub>=0.25.1
 
 # Database & Storage
-sqlite3
 tiktoken>=0.5.0
 
 # Visualization

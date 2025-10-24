@@ -36,7 +36,7 @@ from src.unga_analysis.ui.tabs.error_insights_tab import render_error_insights_t
 from src.unga_analysis.ui.enhanced_ui_components import (
     render_page_header, render_info_card, render_success_card, 
     render_warning_card, render_error_card, render_step_guide,
-    render_feature_highlights, render_metric_cards, render_enhanced_sidebar,
+    render_metric_cards, render_enhanced_sidebar,
     render_loading_spinner, render_tooltip_help, render_progress_bar,
     render_enhanced_tabs, render_data_quality_indicators, render_enhanced_footer
 )
@@ -400,32 +400,6 @@ def main():
             "Welcome to UNGA Analysis!",
             "This platform helps you analyze UN General Assembly speeches with AI-powered insights. Start by uploading a document or exploring the database."
         )
-    
-    # Feature highlights for first-time users
-    if current_user.login_count <= 3:
-        features = [
-            {
-                "icon": "📝",
-                "title": "New Analysis",
-                "description": "Upload documents or paste text for AI analysis"
-            },
-            {
-                "icon": "🌍",
-                "title": "Cross-Year Analysis", 
-                "description": "Compare speeches across different years"
-            },
-            {
-                "icon": "📊",
-                "title": "Visualizations",
-                "description": "Interactive charts and data insights"
-            },
-            {
-                "icon": "🗄️",
-                "title": "Database Chat",
-                "description": "Chat directly with the UNGA database"
-            }
-        ]
-        render_feature_highlights(features)
     
     # Enhanced tabs with better organization
     tab_configs = [

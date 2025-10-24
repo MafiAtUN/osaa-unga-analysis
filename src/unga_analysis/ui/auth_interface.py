@@ -10,7 +10,7 @@ from ..core.user_auth import user_auth_manager, User
 from .enhanced_ui_components import (
     render_page_header, render_info_card, render_success_card, 
     render_warning_card, render_error_card, render_step_guide,
-    render_feature_highlights, render_enhanced_footer
+    render_enhanced_footer
 )
 
 
@@ -130,33 +130,8 @@ def render_login_page():
                 )
             del st.session_state.registration_status
     
-    # Feature highlights for new users
-    st.markdown("---")
-    features = [
-        {
-            "icon": "🤖",
-            "title": "AI-Powered Analysis",
-            "description": "Advanced AI analysis of speeches and documents"
-        },
-        {
-            "icon": "📊",
-            "title": "Interactive Visualizations",
-            "description": "Rich charts and data insights"
-        },
-        {
-            "icon": "🌍",
-            "title": "Cross-Year Analysis",
-            "description": "Compare speeches across different years"
-        },
-        {
-            "icon": "🗄️",
-            "title": "Database Chat",
-            "description": "Chat directly with the UNGA database"
-        }
-    ]
-    render_feature_highlights(features)
-    
     # Enhanced footer
+    st.markdown("---")
     render_enhanced_footer()
 
 
