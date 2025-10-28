@@ -113,7 +113,7 @@ Result: 3-line chart in official UN colors
 
 ```bash
 # Azure OpenAI - Primary
-AZURE_OPENAI_ENDPOINT=https://unga-analysis.openai.azure.com/
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.cognitiveservices.azure.com/
 AZURE_OPENAI_API_KEY=your-key
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 AZURE_OPENAI_DEPLOYMENT_NAME=model-router
