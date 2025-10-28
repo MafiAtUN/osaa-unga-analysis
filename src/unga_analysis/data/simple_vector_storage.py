@@ -32,6 +32,19 @@ class SimpleVectorStorageManager:
         
         # Initialize DuckDB connection
         self.conn = duckdb.connect(db_path)
+    
+    def reconnect(self):
+        """Force reconnect to database to see latest changes."""
+        import duckdb
+        try:
+            self.conn.close()
+        except:
+            pass
+        # Create completely fresh connection
+        self.conn = duckdb.connect(self.db_path)
+        # Force read from disk by running a query
+        _ = self.conn.execute("SELECT COUNT(*) FROM speeches WHERE region IS NOT NULL").fetchone()
+        logger.info(f"Reconnected to database: {self.db_path}")
         
         # Initialize sentence transformer for embeddings
         if SENTENCE_TRANSFORMERS_AVAILABLE:

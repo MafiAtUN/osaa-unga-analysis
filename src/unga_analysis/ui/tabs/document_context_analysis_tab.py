@@ -43,7 +43,7 @@ def get_openai_client():
 def render_document_context_analysis_tab():
     """Render the document context analysis tab."""
     st.header("📄 Document Context Analysis")
-    st.markdown("**Upload documents, provide context, and get AI analysis with UNGA corpus (1946-2024)**")
+    st.markdown("**Upload documents, provide context, and get AI analysis with UNGA corpus (1946-2025)**")
     
     # Initialize session state
     if 'document_analysis_history' not in st.session_state:
@@ -278,7 +278,7 @@ def process_document_analysis_simple(
         """
         
         # Run AI analysis
-        system_message = "You are an expert analyst specializing in UN General Assembly speeches and international relations. You have access to a comprehensive database of UNGA speeches from 1946-2024 and can provide detailed analysis combining current documents with historical context."
+        system_message = "You are an expert analyst specializing in UN General Assembly speeches and international relations. You have access to a comprehensive database of UNGA speeches from 1946-2025 and can provide detailed analysis combining current documents with historical context."
         
         analysis_result = run_analysis(
             system_msg=system_message,

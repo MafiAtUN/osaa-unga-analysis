@@ -202,14 +202,15 @@ def chunk_and_synthesize(system_msg: str, user_msg: str, model: str = "gpt-4o",
 def get_available_models() -> list[str]:
     """
     Get list of available OpenAI models for the dropdown.
+    Only includes actual Azure OpenAI deployment names from unga-analysis resource.
     
     Returns:
-        List of model names
+        List of model deployment names
     """
     return [
-        "model-router-osaa-2",
-        "gpt-4",
-        "gpt-3.5-turbo"
+        "model-router",      # Router deployment (fastest)
+        "gpt-4o-unga",      # GPT-4o deployment
+        "gpt-5-unga"        # GPT-5 deployment (newest)
     ]
 
 def estimate_cost(input_tokens: int, output_tokens: int, model: str = "gpt-4o") -> float:

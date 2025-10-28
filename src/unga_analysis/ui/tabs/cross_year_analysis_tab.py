@@ -366,7 +366,7 @@ def get_country_and_group_questions():
 def render_cross_year_analysis_tab():
     """Render the cross-year analysis tab with streamlined country/group selection."""
     st.header("🌍 Cross-Year Analysis")
-    st.markdown("**Advanced analysis across multiple years and countries (1946-2025)**")
+    st.markdown("**Advanced analysis across multiple years and countries (1946-2025) • 11,094 speeches • 200 countries**")
     
     # Initialize session state for cross-year analysis
     if 'cross_year_chat_history' not in st.session_state:
@@ -541,72 +541,324 @@ def render_text_analysis_interface():
                             st.info(f"📅 Year range: {years_to_analyze[0]}-{years_to_analyze[-1]}")
                             
                             cross_year_manager = CrossYearAnalysisManager()
-                            result = cross_year_manager.analyze_cross_year_trends(
-                                query=analysis_query,
+                            
+                            # Get the actual speeches for AI analysis
+                            speeches = cross_year_manager.get_speeches_for_analysis(
                                 countries=countries_to_analyze,
                                 years=years_to_analyze,
-                                regions=[]  # No region filtering
+                                limit=500  # Get up to 500 speeches
                             )
                             
-                            if result:
-                                # Debug: Show result info
-                                st.info(f"📄 Analysis result length: {len(result)} characters")
-                                if "Bangladesh" in result and "70" in result:
-                                    st.success("✅ Analysis contains Bangladesh data")
-                                else:
-                                    st.warning("⚠️ Analysis may be missing Bangladesh data")
+                            if not speeches:
+                                st.error("❌ No speeches found for the selected criteria.")
+                                result = {"error": "No speeches found for analysis"}
+                            else:
+                                st.success(f"✅ Found {len(speeches)} speeches to analyze")
                                 
-                                # Check if this is a data limitation issue
-                                if "No speeches found matching" in result:
-                                    st.error("❌ No data available for the requested analysis.")
+                                # Prepare context from speeches
+                                speech_context = ""
+                                for speech in speeches[:50]:  # Use first 50 for context
+                                    speech_context += f"\n\n--- {speech.get('country_name')} ({speech.get('year')}) ---\n"
+                                    speech_text = speech.get('speech_text', '')
+                                    # Take first 500 chars of each speech to keep within token limits
+                                    speech_context += speech_text[:500] + "..."
+                                
+                                # Run AI analysis with the actual question
+                                with st.spinner("🤖 Running AI analysis on speech content..."):
+                                    from ...core.openai_client import get_openai_client
+                                    from ...core.llm import run_analysis
                                     
-                                    # Generate data limitation analysis
-                                    st.markdown("---")
-                                    st.markdown("### 🔍 Data Limitation Analysis")
+                                    client = get_openai_client()
                                     
-                                    # Extract countries and years from the filters
-                                    selected_countries = selected_countries if 'selected_countries' in locals() else []
-                                    selected_years = selected_years if 'selected_years' in locals() else []
+                                    if not client:
+                                        st.error("❌ AI service not available")
+                                        result = {"error": "AI service not available"}
+                                    else:
+                                        # Analyze query type to determine output structure
+                                        query_lower = customized_prompt.lower()
+                                        
+                                        # Detect query type
+                                        is_trend_query = any(word in query_lower for word in ['trend', 'change', 'evolve', 'over time', 'frequency', 'shift', 'how has'])
+                                        is_comparison_query = any(word in query_lower for word in ['compare', 'difference', 'versus', 'vs', 'between', 'similar', 'differ'])
+                                        is_timeline_query = any(word in query_lower for word in ['timeline', 'chronological', 'history', 'progression', 'when'])
+                                        is_quantitative = any(word in query_lower for word in ['how many', 'count', 'number', 'frequency', 'percentage', 'how much'])
+                                        
+                                        # Build adaptive system message
+                                        system_msg = f"""You are an expert analyst of UN General Assembly speeches with deep expertise in international relations, diplomacy, and policy analysis.
+
+DATASET CONTEXT:
+- Total speeches: {len(speeches)}
+- Countries: {selected_target}
+- Year range: {years_to_analyze[0]}-{years_to_analyze[-1]}
+- Total words: {sum(s.get('word_count', 0) for s in speeches):,}
+
+CORE REQUIREMENTS:
+1. **Answer the question directly** - provide actionable insights, not just summaries
+2. **Use rich markdown formatting** with clear visual hierarchy
+3. **Create visual artifacts** (tables, timelines, comparisons) as appropriate
+4. **Cite evidence** with specific years and quotes
+5. **Be analytical** - identify patterns, causation, and implications
+
+FORMATTING STANDARDS:
+- Use ### for major sections, #### for subsections
+- Use **bold** for key findings and emphasis
+- Use *italics* for quotes and specific terms being analyzed
+- Use > blockquotes for impactful direct quotes from speeches
+- Use `code formatting` for tracking specific terms/phrases
+- Create markdown tables with | separators and proper alignment
+- Use bullet points (-) and numbered lists (1.) extensively
+- Add emoji strategically for visual scanning (📊 📈 🔍 💡 ⚠️ ✅)
+
+REQUIRED ARTIFACTS BASED ON QUERY TYPE:"""
+                                        
+                                        # Add specific guidance based on query type
+                                        if is_trend_query:
+                                            system_msg += """
+
+**For TREND/EVOLUTION Questions:**
+Must include:
+1. **Executive Summary** (2-3 sentences)
+2. **Trend Overview Table:**
+   | Time Period | Key Characteristics | Intensity | Notable Changes |
+   |-------------|---------------------|-----------|-----------------|
+   | YYYY-YYYY   | Main themes         | Low/Med/High | What shifted |
+   
+3. **Detailed Period Analysis** with ### headers for each period
+4. **Key Inflection Points** - bullet list with years and what changed
+5. **Trajectory Chart** (described in text):
+   ```
+   2000: ████░░░░░░ Low
+   2010: ███████░░░ Medium
+   2020: ██████████ High
+   ```
+6. **Conclusion** with forward-looking implications"""
+                                        
+                                        if is_comparison_query:
+                                            system_msg += """
+
+**For COMPARISON Questions:**
+Must include:
+1. **Comparative Summary** highlighting main contrasts
+2. **Side-by-Side Comparison Table:**
+   | Dimension | Entity 1 | Entity 2 | Entity 3 | Key Insight |
+   |-----------|----------|----------|----------|-------------|
+   | Theme X   | ...      | ...      | ...      | ...         |
+   
+3. **Detailed Analysis by Dimension** (### for each)
+4. **Commonalities vs Divergences** section
+5. **Ranking/Spectrum** if applicable (who's most/least X)
+6. **Visual Spectrum** (text-based):
+   ```
+   Progressive ←―――――→ Conservative
+   Country A        Country B    Country C
+   ```"""
+                                        
+                                        if is_quantitative:
+                                            system_msg += """
+
+**For QUANTITATIVE Questions:**
+Must include:
+1. **Summary Statistics** in bullet format
+2. **Frequency/Count Table:**
+   | Year/Entity | Count | % of Total | Change from Previous | Trend |
+   |-------------|-------|------------|---------------------|-------|
+   | ...         | 42    | 15%        | +8% ↑              | Rising |
+   
+3. **Calculations shown** - explain methodology
+4. **Statistical Summary:**
+   - Mean, median, range if relevant
+   - Percentage changes with ↑↓ indicators
+   - Growth rates or decline rates
+5. **Data Visualization** (text chart):
+   ```
+   ████████████████████ 2025 (85)
+   ████████████░░░░░░░░ 2020 (60)
+   ████████░░░░░░░░░░░░ 2015 (40)
+   ```"""
+                                        
+                                        if is_timeline_query:
+                                            system_msg += """
+
+**For TIMELINE Questions:**
+Must include:
+1. **Timeline Overview Table:**
+   | Year/Period | Major Event/Theme | Significance | Context |
+   |-------------|-------------------|--------------|---------|
+   | YYYY        | What happened     | Why important| Background |
+   
+2. **Chronological Narrative** with #### headers for each period
+3. **Milestone Markers** with 🎯 emoji
+4. **Causal Connections** showing how earlier events led to later positions"""
+                                        
+                                        # Add general guidelines
+                                        system_msg += """
+
+GENERAL OUTPUT STRUCTURE:
+```markdown
+### 🎯 Executive Summary
+[2-3 sentences directly answering the question]
+
+### 📊 [Main Analysis Section]
+[Tables, data, detailed findings]
+
+#### Key Finding 1
+[Details with evidence]
+
+#### Key Finding 2
+[Details with evidence]
+
+### 💡 Key Insights
+- Insight 1
+- Insight 2
+- Insight 3
+
+### 🔍 Supporting Evidence
+> "Relevant quote from YYYY speech"
+> "Another quote from YYYY speech"
+
+### ✅ Conclusion
+[Synthesis and implications]
+```
+
+CRITICAL RULES:
+- Every claim must reference specific year(s)
+- Use actual data from the speeches provided
+- Create at least 1-2 tables per response
+- Make tables information-dense but scannable
+- Use visual elements (charts, scales, progress bars) described in text
+- Format numbers with commas (e.g., 1,234)
+- Use percentage comparisons when showing changes
+- End with actionable insights or patterns identified"""
+                                        
+                                        user_msg = f"""**ANALYSIS REQUEST**
+
+**Primary Question:**
+{customized_prompt}
+
+**Dataset Provided:**
+{len(speeches)} speeches from {selected_target} spanning {years_to_analyze[0]}-{years_to_analyze[-1]}
+
+**Speech Excerpts:**
+{speech_context}
+
+**Your Task:**
+Using the {len(speeches)} speeches in the dataset and the excerpts above:
+1. Extract all relevant information that addresses the question
+2. Identify patterns, trends, and insights
+3. Create structured output with tables and visual elements
+4. Provide specific evidence (years, quotes, statistics)
+5. Format everything in rich markdown as specified in your instructions
+
+**Deliver a comprehensive, visually rich analysis now:**"""
+                                        
+                                        # Use model-router for analysis
+                                        import os
+                                        model = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'model-router')
+                                        
+                                        ai_result = run_analysis(
+                                            system_msg=system_msg,
+                                            user_msg=user_msg,
+                                            model=model,
+                                            client=client
+                                        )
+                                        
+                                        # Create result dictionary with AI analysis
+                                        result = {
+                                            'speech_count': len(speeches),
+                                            'years': years_to_analyze,
+                                            'countries': countries_to_analyze,
+                                            'ai_analysis': ai_result,
+                                            'question': customized_prompt
+                                        }
+                            
+                            if result:
+                                # Check if result contains error
+                                if isinstance(result, dict) and "error" in result:
+                                    st.error(f"❌ {result['error']}")
                                     
-                                    # Generate limitation analysis
-                                    limitation_analysis = data_limitation_handler.analyze_data_limitation(
-                                        selected_countries, selected_years, customized_prompt
-                                    )
-                                    
-                                    # Display limitation report
-                                    with st.expander("📊 View Data Limitation Report", expanded=True):
-                                        limitation_report = data_limitation_handler.generate_limitation_report(limitation_analysis)
-                                        st.markdown(limitation_report)
-                                    
-                                    # Show template tables
-                                    st.markdown("### 📋 Template Tables for Future Analysis")
-                                    for table_name, table_content in limitation_analysis['template_tables'].items():
-                                        with st.expander(f"📊 {table_name.replace('_', ' ').title()}", expanded=False):
-                                            st.markdown(table_content)
-                                    
-                                    # Show recommendations
-                                    st.markdown("### 💡 Recommendations")
-                                    st.markdown("\n".join(limitation_analysis['recommendations']))
-                                    
-                                    # Show alternatives
-                                    st.markdown("### 🔄 Alternative Analyses")
-                                    st.markdown("\n".join(limitation_analysis['alternative_analysis']))
+                                    # Check if this is a "No speeches found" error
+                                    if "No speeches found" in result['error']:
+                                        st.error("❌ No data available for the requested analysis.")
+                                        
+                                        # Generate data limitation analysis
+                                        st.markdown("---")
+                                        st.markdown("### 🔍 Data Limitation Analysis")
+                                        
+                                        # Extract countries and years from the filters
+                                        selected_countries_local = selected_countries if 'selected_countries' in locals() else []
+                                        selected_years_local = selected_years if 'selected_years' in locals() else []
+                                        
+                                        # Generate limitation analysis
+                                        limitation_analysis = data_limitation_handler.analyze_data_limitation(
+                                            selected_countries_local, selected_years_local, customized_prompt
+                                        )
+                                        
+                                        # Display limitation report
+                                        with st.expander("📊 View Data Limitation Report", expanded=True):
+                                            limitation_report = data_limitation_handler.generate_limitation_report(limitation_analysis)
+                                            st.markdown(limitation_report)
+                                        
+                                        # Show template tables
+                                        st.markdown("### 📋 Template Tables for Future Analysis")
+                                        for table_name, table_content in limitation_analysis['template_tables'].items():
+                                            with st.expander(f"📊 {table_name.replace('_', ' ').title()}", expanded=False):
+                                                st.markdown(table_content)
+                                        
+                                        # Show recommendations
+                                        st.markdown("### 💡 Recommendations")
+                                        st.markdown("\n".join(limitation_analysis['recommendations']))
+                                        
+                                        # Show alternatives
+                                        st.markdown("### 🔄 Alternative Analyses")
+                                        st.markdown("\n".join(limitation_analysis['alternative_analysis']))
                                 else:
+                                    # Successful analysis - display the results
+                                    st.success("✅ Analysis completed successfully!")
+                                    
+                                    # Display result summary
+                                    st.subheader("📊 Analysis Result")
+                                    st.markdown(f"**Target:** {selected_target}")
+                                    st.markdown(f"**Category:** {selected_category}")
+                                    st.markdown("---")
+                                    
+                                    # Display the analysis result
+                                    if isinstance(result, dict):
+                                        # Show summary metrics
+                                        col1, col2, col3 = st.columns(3)
+                                        with col1:
+                                            st.metric("📊 Speeches Analyzed", result.get('speech_count', 0))
+                                        with col2:
+                                            years = result.get('years', [])
+                                            st.metric("📅 Year Range", f"{min(years)}-{max(years)}" if years else "N/A")
+                                        with col3:
+                                            countries = result.get('countries', [])
+                                            st.metric("🌍 Countries", len(countries) if countries else "All")
+                                        
+                                        st.markdown("---")
+                                        
+                                        # Display the AI analysis
+                                        if 'ai_analysis' in result and result['ai_analysis']:
+                                            st.markdown("### 🤖 AI Analysis")
+                                            st.markdown(result['ai_analysis'])
+                                        else:
+                                            # Fallback to basic stats if no AI analysis
+                                            st.markdown("### 📈 Statistical Summary")
+                                            st.info(f"📊 Found {result.get('speech_count', 0)} speeches")
+                                            st.info(f"📅 Years: {', '.join(map(str, result.get('years', [])))}")
+                                            if result.get('countries'):
+                                                st.info(f"🌍 Countries: {', '.join(result.get('countries', []))}")
+                                    else:
+                                        # If result is a string
+                                        st.markdown(result)
+                                    
                                     # Add to chat history for successful analysis
                                     st.session_state.cross_year_chat_history.append({
                                         'category': selected_category,
                                         'target': selected_target,
                                         'prompt': customized_prompt,
-                                        'result': result,
+                                        'result': str(result),  # Convert to string for storage
                                         'timestamp': pd.Timestamp.now()
                                     })
-                                    
-                                    # Display result
-                                    st.subheader("📊 Analysis Result")
-                                    st.markdown(f"**Target:** {selected_target}")
-                                    st.markdown(f"**Category:** {selected_category}")
-                                    st.markdown("---")
-                                    st.markdown(result)
                                     
                                     # Display chat history
                                     if st.session_state.cross_year_chat_history:

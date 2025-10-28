@@ -39,11 +39,7 @@ def render_login_page():
         "Sign in to access advanced speech analysis tools"
     )
     
-    # Welcome information
-    render_info_card(
-        "Welcome to UNGA Analysis",
-        "This platform provides AI-powered analysis of UN General Assembly speeches. Sign in to access advanced features including document analysis, cross-year comparisons, and interactive visualizations."
-    )
+    # Welcome information removed as requested
     
     # Login form with enhanced styling
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -57,9 +53,9 @@ def render_login_page():
             border: 1px solid #e9ecef;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         ">
-            <h3 style="text-align: center; color: #1f77b4; margin-bottom: 20px;">
+            <h4 style="text-align: center; color: #000000; margin-bottom: 20px; font-size: 16px;">
                 🔑 Sign In
-            </h3>
+            </h4>
         </div>
         """, unsafe_allow_html=True)
         

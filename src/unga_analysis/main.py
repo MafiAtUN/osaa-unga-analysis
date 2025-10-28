@@ -326,7 +326,7 @@ def main():
         page_title="UNGA Analysis App",
         page_icon="🇺🇳",
         layout="wide",
-        initial_sidebar_state="expanded",
+        initial_sidebar_state="collapsed",
         menu_items={
             'Get Help': 'https://github.com/unga-analysis/docs',
             'Report a bug': 'https://github.com/unga-analysis/issues',
@@ -337,13 +337,33 @@ def main():
     # Initialize session state
     initialize_session_state()
     
+    # TESTING MODE: Bypass authentication
     # Check if user is authenticated
-    if not is_user_authenticated():
-        render_auth_interface()
-        return
+    # if not is_user_authenticated():
+    #     render_auth_interface()
+    #     return
     
-    # Get current user info
-    current_user = get_current_user()
+    # Create mock user for testing
+    from datetime import datetime
+    class MockUser:
+        def __init__(self):
+            self.id = 1
+            self.email = "test@un.org"
+            self.full_name = "Test User"
+            self.title = "Test Position"
+            self.office = "Test Office"
+            self.status = "approved"
+            self.created_at = datetime.now()
+            self.approved_at = datetime.now()
+            self.approved_by = "admin"
+            self.last_login = datetime.now()
+            self.login_count = 1
+            self.purpose = "Testing purposes"
+    
+    # Get current user info (using mock user for testing)
+    if not hasattr(st.session_state, 'user') or st.session_state.user is None:
+        st.session_state.user = MockUser()
+    current_user = st.session_state.user
     
     # Initialize database
     try:
@@ -355,51 +375,41 @@ def main():
         )
         return
     
-    # Enhanced page header
-    render_page_header(
-        "🇺🇳 UN GA Daily Readouts",
-        "Production-ready analysis tool for UN General Assembly speeches"
-    )
+    # Top bar with user info and logout button
+    col1, col2, col3 = st.columns([3, 2, 1])
     
-    # Enhanced sidebar with user info and navigation help
-    render_enhanced_sidebar()
+    with col1:
+        render_page_header(
+            "🇺🇳 UN GA Daily Readouts",
+            "Analysis tool for UN General Assembly speeches (1946-2025) • 11,094 speeches • 200 countries"
+        )
     
-    # User info section
-    with st.sidebar:
-        st.markdown("### 👤 Your Profile")
+    with col2:
+        # User info - compact display
         st.markdown(f"""
         <div style="
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #1f77b4;
+            text-align: right;
+            padding: 10px;
+            margin-top: 10px;
         ">
-            <p style="margin: 0; font-weight: bold; color: #1f77b4;">
-                {current_user.full_name}
+            <p style="margin: 0; font-weight: bold; color: #000000; font-size: 0.9em;">
+                👤 {current_user.full_name}
             </p>
-            <p style="margin: 5px 0; color: #666; font-size: 0.9em;">
+            <p style="margin: 0; color: #666; font-size: 0.8em;">
                 {current_user.title}
-            </p>
-            <p style="margin: 5px 0; color: #666; font-size: 0.9em;">
-                {current_user.office}
-            </p>
-            <p style="margin: 5px 0 0 0; color: #999; font-size: 0.8em;">
-                Last Login: {current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else 'First time'}
             </p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Logout button
+    
+    with col3:
+        # Logout button in top right
+        st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
         if st.button("🚪 Logout", help="Logout from the application", use_container_width=True):
             logout_user()
             return
     
-    # Welcome message for new users
-    if current_user.login_count <= 1:
-        render_info_card(
-            "Welcome to UNGA Analysis!",
-            "This platform helps you analyze UN General Assembly speeches with AI-powered insights. Start by uploading a document or exploring the database."
-        )
+    # Separator line
+    st.markdown("---")
     
     # Enhanced tabs with better organization
     tab_configs = [

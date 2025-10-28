@@ -386,16 +386,16 @@ def render_enhanced_footer():
         text-align: center;
         margin-top: 30px;
     ">
-        <h4 style="color: #1f77b4; margin: 0 0 10px 0;">
+        <h4 style="color: #000000; margin: 0 0 10px 0; font-weight: bold;">
             🇺🇳 UNGA Analysis Platform
         </h4>
-        <p style="color: #666; margin: 0 0 10px 0;">
+        <p style="color: #000000; margin: 0 0 10px 0; font-weight: 500;">
             Built for UN OSAA | Supports PDF, DOCX, MP3 | Auto-classifies African Member States vs Development Partners
         </p>
-        <p style="color: #999; font-size: 0.9em; margin: 0;">
+        <p style="color: #000000; font-size: 0.9em; margin: 0; font-weight: 500;">
             Developed by: <strong>SMU Data Team</strong> | 
-            <a href="#" style="color: #1f77b4;">Documentation</a> | 
-            <a href="#" style="color: #1f77b4;">Support</a>
+            <a href="#" style="color: #000000; text-decoration: underline;">Documentation</a> | 
+            <a href="#" style="color: #000000; text-decoration: underline;">Support</a>
         </p>
     </div>
     """, unsafe_allow_html=True)

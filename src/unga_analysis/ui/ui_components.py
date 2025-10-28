@@ -11,32 +11,26 @@ from ..data.cross_year_analysis import cross_year_manager
 
 
 def render_country_selection():
-    """Render country selection interface."""
-    st.subheader("🏳️ Country Selection")
+    """Render country selection interface with all UN member countries."""
+    # Get all countries from the mapping
+    from ..data.data_ingestion import COUNTRY_CODE_MAPPING
     
-    # Country input
-    country = st.text_input(
+    # Create sorted list of country names
+    all_countries = sorted(COUNTRY_CODE_MAPPING.values())
+    
+    # Country selection with searchable dropdown
+    country = st.selectbox(
         "Country Name:",
-        placeholder="e.g., United States, China, Nigeria, Kenya...",
-        help="Enter the name of the country that delivered the speech"
+        options=[""] + all_countries,  # Add empty option at start
+        index=0,
+        help="Select the country that delivered the speech"
     )
     
-    # Auto-detect country from text
-    if st.checkbox("🔍 Auto-detect country from text", help="Try to automatically detect the country from the speech text"):
-        if st.session_state.get('extracted_text'):
-            from utils import detect_country_simple
-            detected_country = detect_country_simple(st.session_state.extracted_text)
-            if detected_country != "Unknown":
-                st.info(f"🔍 Detected country: **{detected_country}**")
-                country = detected_country
-    
-    return country
+    return country if country else None
 
 
 def render_speech_date_selection():
     """Render speech date selection interface."""
-    st.subheader("📅 Speech Date")
-    
     # Date input
     speech_date = st.date_input(
         "Date of Speech:",
@@ -47,10 +41,8 @@ def render_speech_date_selection():
     return speech_date
 
 
-def render_classification_selection():
+def render_classification_selection(country=None):
     """Render classification selection interface."""
-    st.subheader("🏷️ Classification")
-    
     # Classification options
     classification_options = [
         "African Member State",
@@ -58,9 +50,28 @@ def render_classification_selection():
         "Other"
     ]
     
+    # Auto-detect if country is African
+    default_index = 0
+    if country:
+        from ..data.data_ingestion import REGION_MAPPING, COUNTRY_CODE_MAPPING
+        # Find country code
+        country_code = None
+        for code, name in COUNTRY_CODE_MAPPING.items():
+            if name == country:
+                country_code = code
+                break
+        
+        # Check if African
+        if country_code and REGION_MAPPING.get(country_code) == 'Africa':
+            default_index = 0  # African Member State
+            st.info(f"🌍 {country} is automatically classified as an African Member State")
+        else:
+            default_index = 1  # Development Partner
+    
     classification = st.selectbox(
         "Select Classification:",
         options=classification_options,
+        index=default_index,
         help="Choose the appropriate classification for the country"
     )
     
@@ -69,9 +80,7 @@ def render_classification_selection():
 
 def render_upload_section():
     """Render file upload section."""
-    st.subheader("📁 Upload Speech File")
-    
-    # File uploader
+    # File uploader (header is rendered in the calling function)
     uploaded_file = st.file_uploader(
         "Choose a file:",
         type=['txt', 'pdf', 'doc', 'docx', 'mp3', 'wav', 'm4a'],
@@ -83,9 +92,7 @@ def render_upload_section():
 
 def render_paste_section():
     """Render text paste section."""
-    st.subheader("📝 Paste Speech Text")
-    
-    # Text area for pasting
+    # Text area for pasting (header is rendered in the calling function)
     pasted_text = st.text_area(
         "Paste speech text here:",
         height=200,
@@ -144,22 +151,31 @@ def render_data_availability_info():
 
 
 def render_analysis_suggestions(country: str, classification: str):
-    """Render analysis suggestions."""
+    """Render analysis suggestions with clickable questions."""
     st.subheader("💡 Suggested Questions")
     
-    from utils import get_suggestion_questions
+    from ..utils.utils import get_suggestion_questions
     suggestion_questions = get_suggestion_questions(country, classification)
     
     if suggestion_questions:
-        # Show first few suggestions
-        st.markdown("**Try asking:**")
+        # Initialize selected question in session state
+        if 'selected_question' not in st.session_state:
+            st.session_state.selected_question = ""
+        
+        # Show first few suggestions as clickable buttons
+        st.markdown("**Click a question to load it:**")
+        cols = st.columns(1)
         for i, question in enumerate(suggestion_questions[:5], 1):
-            st.markdown(f"{i}. {question}")
+            if st.button(f"💬 {question}", key=f"suggest_{i}", use_container_width=True):
+                st.session_state.selected_question = question
+                st.rerun()  # Rerun to load the question in the text area
         
         # Show more suggestions in expander
         with st.expander("View all suggestions"):
             for i, question in enumerate(suggestion_questions, 1):
-                st.markdown(f"{i}. {question}")
+                if st.button(f"💬 {question}", key=f"suggest_all_{i}", use_container_width=True):
+                    st.session_state.selected_question = question
+                    st.rerun()  # Rerun to load the question in the text area
     else:
         st.info("No suggestions available for this classification.")
 
@@ -172,60 +188,109 @@ def render_chat_interface(analysis_context: str, country: str, classification: s
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
     
-    # Show chat history
-    if st.session_state.chat_history:
-        st.markdown("#### 📚 Chat History")
-        for i, chat in enumerate(st.session_state.chat_history[-5:], 1):
-            with st.expander(f"Q{i}: {chat['question'][:50]}..."):
-                st.markdown(f"**Question:** {chat['question']}")
-                st.markdown(f"**Answer:** {chat['answer']}")
-                st.caption(f"Asked at: {chat['timestamp']}")
+    # Initialize selected question if not exists
+    if 'selected_question' not in st.session_state:
+        st.session_state.selected_question = ""
     
-    # Chat input
+    # Chat input - use selected question if available
+    # Use a persistent key to maintain the text area value
+    if 'chat_input_value' not in st.session_state:
+        st.session_state.chat_input_value = ""
+    
+    # If there's a selected question, update the input value
+    if st.session_state.selected_question:
+        st.session_state.chat_input_value = st.session_state.selected_question
+        st.session_state.selected_question = ""  # Clear after loading
+    
     chat_question = st.text_area(
         "Ask a question about the analysis:",
+        value=st.session_state.chat_input_value,
         height=100,
-        placeholder="Type your question here...",
-        help="Ask any follow-up question about the speech analysis"
+        placeholder="Type your question here or click a suggestion above...",
+        help="Ask any follow-up question about the speech analysis",
+        key="chat_question_input"
     )
     
+    # Update the session state with current value
+    st.session_state.chat_input_value = chat_question
+    
     # Chat buttons
-    col1, col2 = st.columns([1, 1])
+    col1, col2, col3 = st.columns([1, 1, 1])
     
     with col1:
         if st.button("🤖 Ask Question", type="primary", use_container_width=True):
             if chat_question.strip():
-                # Process the question
-                from analysis import process_chat_question
+                # Process the question using Azure OpenAI
                 with st.spinner("🧠 AI is thinking..."):
-                    response, error = process_chat_question(
-                        chat_question, 
-                        analysis_context, 
-                        country, 
-                        classification
-                    )
-                    
-                    if response:
-                        # Add to chat history
-                        st.session_state.chat_history.append({
-                            'question': chat_question,
-                            'answer': response,
-                            'timestamp': datetime.now().strftime('%H:%M:%S')
-                        })
+                    try:
+                        from ..core.openai_client import get_openai_client
+                        from ..core.llm import run_analysis
                         
-                        st.success("✅ Response generated!")
-                        st.markdown("#### 🤖 AI Response")
-                        st.markdown(response)
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Error: {error}")
+                        client = get_openai_client()
+                        if not client:
+                            st.error("❌ AI service is not available.")
+                        else:
+                            # Create context-aware prompt
+                            system_msg = f"""You are an expert analyst of UN General Assembly speeches. 
+                            You are answering questions about a speech from {country} ({classification}).
+                            
+                            Use the following analysis context to answer the question:
+                            {analysis_context}
+                            
+                            Provide a clear, concise answer based on the analysis."""
+                            
+                            user_msg = chat_question
+                            
+                            # Get deployment name
+                            import os
+                            model = os.getenv('AZURE_OPENAI_DEPLOYMENT_NAME', 'model-router')
+                            
+                            response = run_analysis(
+                                system_msg=system_msg,
+                                user_msg=user_msg,
+                                model=model,
+                                client=client
+                            )
+                            
+                            if response:
+                                # Add to chat history
+                                st.session_state.chat_history.append({
+                                    'question': chat_question,
+                                    'answer': response,
+                                    'timestamp': datetime.now().strftime('%H:%M:%S')
+                                })
+                                
+                                st.success("✅ Response generated!")
+                                # Clear the input after successful response
+                                st.session_state.chat_input_value = ""
+                            else:
+                                st.error("❌ No response received from AI")
+                                
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
             else:
                 st.warning("⚠️ Please enter a question.")
     
     with col2:
         if st.button("🗑️ Clear History", use_container_width=True):
             st.session_state.chat_history = []
+            st.success("✅ Chat history cleared!")
+    
+    with col3:
+        if st.button("🔄 Clear Input", use_container_width=True):
+            st.session_state.selected_question = ""
+            st.session_state.chat_input_value = ""
             st.rerun()
+    
+    # Show chat history below
+    if st.session_state.chat_history:
+        st.markdown("---")
+        st.markdown("#### 📚 Chat History")
+        for i, chat in enumerate(reversed(st.session_state.chat_history[-5:]), 1):
+            with st.expander(f"Q: {chat['question'][:60]}...", expanded=(i==1)):
+                st.markdown(f"**Question:** {chat['question']}")
+                st.markdown(f"**Answer:** {chat['answer']}")
+                st.caption(f"Asked at: {chat['timestamp']}")
 
 
 def render_export_section(analysis_data: Dict[str, Any]):
@@ -236,7 +301,7 @@ def render_export_section(analysis_data: Dict[str, Any]):
     
     with col1:
         if st.button("📄 Export as PDF", use_container_width=True):
-            from export_utils import create_export_files
+            from ..utils.export_utils import create_export_files
             try:
                 export_files = create_export_files(analysis_data)
                 if export_files:

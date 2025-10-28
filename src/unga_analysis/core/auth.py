@@ -45,8 +45,9 @@ def validate_prompt_safety(prompt: str) -> bool:
     return True
 
 
-def check_rate_limit(user_id: str, max_attempts: int = 5, window: int = 300) -> bool:
+def check_rate_limit(user_id: str, max_attempts: int = 100, window: int = 60) -> bool:
     """Check if user has exceeded rate limit."""
+    # Increased limits for testing: 100 requests per minute
     now = time.time()
     attempts = user_attempts[user_id]
     
