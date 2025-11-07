@@ -93,8 +93,29 @@ def render_all_analyses_tab():
                     # Show analysis content if selected
                     if st.session_state.get('selected_analysis') == analysis['id']:
                         st.markdown("---")
-                        st.markdown("### Analysis Content")
+                        st.markdown("### 🤖 AI Analysis")
                         st.markdown(analysis['output_markdown'])
+                        
+                        # Show chat history if available
+                        if analysis.get('chat_history'):
+                            st.markdown("---")
+                            st.markdown("### 💬 Follow-up Conversation")
+                            
+                            import json
+                            chat_history = json.loads(analysis['chat_history']) if isinstance(analysis['chat_history'], str) else analysis['chat_history']
+                            
+                            if chat_history and len(chat_history) > 0:
+                                st.info(f"📊 {len(chat_history)} follow-up question(s) asked")
+                                
+                                for i, chat in enumerate(chat_history, 1):
+                                    with st.expander(f"Q{i}: {chat['question'][:60]}...", expanded=(i == len(chat_history))):
+                                        st.markdown(f"**❓ Question:**")
+                                        st.markdown(chat['question'])
+                                        st.markdown(f"**💡 Answer:**")
+                                        st.markdown(chat['answer'])
+                                        st.caption(f"Asked at: {chat['timestamp']}")
+                            else:
+                                st.info("No follow-up questions asked yet")
         else:
             st.info("📊 No analyses found. Create your first analysis in the 'New Analysis' tab.")
             

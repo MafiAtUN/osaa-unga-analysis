@@ -35,10 +35,24 @@ class CrossYearQueryManager:
             return []
     
     def get_available_regions(self) -> List[str]:
-        """Get list of available regions."""
+        """Get list of available regions (primary + extended) present in the database."""
         try:
+            rows = self.db_manager.conn.execute(
+                """
+                SELECT DISTINCT rg.region_label
+                FROM region_groupings rg
+                JOIN speeches s ON UPPER(s.country_code) = rg.country_code
+                ORDER BY rg.region_label
+                """
+            ).fetchall()
+
+            if rows:
+                return [row[0] for row in rows if row[0]]
+
+            # Fallback to primary regions from statistics if no extended data is available
             stats = self.db_manager.get_speech_statistics()
             return sorted(stats.get('region_statistics', {}).keys())
+
         except Exception as e:
             logger.error(f"Failed to get available regions: {e}")
             return []

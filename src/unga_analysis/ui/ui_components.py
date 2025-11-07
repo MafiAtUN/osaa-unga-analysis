@@ -53,16 +53,9 @@ def render_classification_selection(country=None):
     # Auto-detect if country is African
     default_index = 0
     if country:
-        from ..data.data_ingestion import REGION_MAPPING, COUNTRY_CODE_MAPPING
-        # Find country code
-        country_code = None
-        for code, name in COUNTRY_CODE_MAPPING.items():
-            if name == country:
-                country_code = code
-                break
-        
-        # Check if African
-        if country_code and REGION_MAPPING.get(country_code) == 'Africa':
+        from ..data.data_ingestion import data_ingestion_manager
+
+        if data_ingestion_manager.is_african_member(country):
             default_index = 0  # African Member State
             st.info(f"🌍 {country} is automatically classified as an African Member State")
         else:
@@ -260,7 +253,17 @@ def render_chat_interface(analysis_context: str, country: str, classification: s
                                     'timestamp': datetime.now().strftime('%H:%M:%S')
                                 })
                                 
-                                st.success("✅ Response generated!")
+                                # Save chat history to database if we have an analysis_id
+                                if 'current_analysis_data' in st.session_state:
+                                    analysis_data = st.session_state.current_analysis_data
+                                    if 'analysis_id' in analysis_data:
+                                        from ...data.simple_vector_storage import simple_vector_storage as db_manager
+                                        db_manager.update_analysis_chat_history(
+                                            analysis_data['analysis_id'],
+                                            st.session_state.chat_history
+                                        )
+                                
+                                st.success("✅ Response generated and saved!")
                                 # Clear the input after successful response
                                 st.session_state.chat_input_value = ""
                             else:

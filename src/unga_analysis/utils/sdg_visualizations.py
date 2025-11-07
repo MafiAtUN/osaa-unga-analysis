@@ -198,13 +198,16 @@ def _render_sdg_trends_comparison(db_manager):
         )
         
         if entity_mode == "Regions":
-            from src.unga_analysis.data.data_ingestion import REGION_MAPPING
-            unique_regions = sorted(set(REGION_MAPPING.values()))
-            
+            from src.unga_analysis.data.data_ingestion import get_all_region_labels
+
+            unique_regions = [region for region in get_all_region_labels() if region and region != "Unknown"]
+
+            default_regions = [region for region in ["Africa", "Asia", "Europe"] if region in unique_regions]
+
             selected_entities = st.multiselect(
                 "Select Regions",
                 options=unique_regions,
-                default=["Africa", "Asia", "Europe"],
+                default=default_regions,
                 key="sdg_trends_regions"
             )
         else:
@@ -261,7 +264,7 @@ def _render_sdg_trends_comparison(db_manager):
 def _create_sdg_multi_line_chart(db_manager, selected_sdgs, year_range, entity_mode, entities):
     """Create multi-line SDG comparison chart."""
     try:
-        from src.unga_analysis.data.data_ingestion import COUNTRY_CODE_MAPPING, REGION_MAPPING
+        from src.unga_analysis.data.data_ingestion import get_country_region_lookup
         
         if not selected_sdgs:
             st.warning("Please select at least one SDG")
@@ -271,12 +274,8 @@ def _create_sdg_multi_line_chart(db_manager, selected_sdgs, year_range, entity_m
             st.warning(f"Please select at least one {entity_mode.lower()[:-1]}")
             return
         
-        # Create country-to-region mapping
-        country_to_region = {}
-        for code, name in COUNTRY_CODE_MAPPING.items():
-            region = REGION_MAPPING.get(code)
-            if region:
-                country_to_region[name] = region
+        # Create country-to-region mapping supporting extended regions
+        country_to_regions = get_country_region_lookup()
         
         with st.spinner(f"Analyzing {len(selected_sdgs)} SDG(s) across {len(entities)} {entity_mode.lower()}..."):
             
@@ -289,7 +288,10 @@ def _create_sdg_multi_line_chart(db_manager, selected_sdgs, year_range, entity_m
                 # Get speeches for this entity
                 if entity_mode == "Regions":
                     # Get countries in this region
-                    countries_in_region = [name for name, reg in country_to_region.items() if reg == entity]
+                    countries_in_region = [
+                        name for name, regions in country_to_regions.items()
+                        if entity in regions
+                    ]
                     if not countries_in_region:
                         continue
                     

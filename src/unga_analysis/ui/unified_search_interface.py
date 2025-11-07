@@ -5,10 +5,15 @@ Provides a consistent search experience across all tabs with enhanced capabiliti
 
 import streamlit as st
 import pandas as pd
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 from datetime import datetime
 from ..core.enhanced_search_engine import get_enhanced_search_engine
 from ..data.simple_vector_storage import simple_vector_storage as db_manager
+from ..data.data_ingestion import get_all_region_labels
+from ..utils.region_utils import (
+    expand_regions_to_countries,
+    extract_regions_and_countries,
+)
 
 
 def render_unified_search_interface(tab_context: str = "general") -> Optional[Dict[str, Any]]:
@@ -77,7 +82,7 @@ def render_unified_search_interface(tab_context: str = "general") -> Optional[Di
             # Region filter
             regions = st.multiselect(
                 "Regions",
-                ["Africa", "Europe", "Asia", "Americas", "Middle East", "Pacific"],
+                [label for label in get_all_region_labels() if label and label != "Unknown"],
                 help="Filter by geographic regions"
             )
         
@@ -125,6 +130,17 @@ def perform_unified_search(
     """Perform unified search using enhanced search engine."""
     try:
         with st.spinner("🔍 Performing enhanced search..."):
+            # Merge detected entities with user-provided filters
+            detected_regions, detected_countries = extract_regions_and_countries(query)
+            merged_regions = sorted(set(regions or []) | set(detected_regions))
+            merged_countries = sorted(set(countries or []) | set(detected_countries))
+
+            st.caption(
+                "🧭 Auto-detected entities → "
+                f"Regions: {', '.join(detected_regions) if detected_regions else 'None'} | "
+                f"Countries: {', '.join(detected_countries) if detected_countries else 'None'}"
+            )
+
             # Get enhanced search engine
             enhanced_search = get_enhanced_search_engine(db_manager)
             
@@ -135,14 +151,16 @@ def perform_unified_search(
             filtered_results = apply_search_filters(
                 search_results.get('results', []),
                 year_range=year_range,
-                regions=regions,
-                countries=countries,
+                regions=merged_regions,
+                countries=merged_countries,
                 similarity_threshold=similarity_threshold
             )
             
             # Update results with filtered data
             search_results['results'] = filtered_results
             search_results['total_found'] = len(filtered_results)
+            search_results['regions_applied'] = merged_regions
+            search_results['countries_applied'] = merged_countries
             
             # Display results
             display_unified_search_results(search_results, include_citations, tab_context)
@@ -163,25 +181,29 @@ def apply_search_filters(
 ) -> List[Dict[str, Any]]:
     """Apply additional filters to search results."""
     filtered_results = []
-    
+
+    allowed_region_countries: Set[str] = set()
+    if regions:
+        allowed_region_countries = {c.lower() for c in expand_regions_to_countries(regions)}
+
+    allowed_countries: Set[str] = set()
+    if countries:
+        allowed_countries = {c.lower() for c in countries}
+ 
     for result in results:
         # Year filter
         year = result.get('year', 0)
         if not (year_range[0] <= year <= year_range[1]):
             continue
-        
-        # Region filter
-        if regions:
-            region = result.get('region', '').lower()
-            if not any(r.lower() in region for r in regions):
-                continue
-        
-        # Country filter
-        if countries:
-            country = result.get('country_name', '').lower()
-            if not any(c.lower() in country for c in countries):
-                continue
-        
+
+        country_lower = result.get('country_name', '').lower()
+
+        if allowed_region_countries and country_lower not in allowed_region_countries:
+            continue
+
+        if allowed_countries and country_lower not in allowed_countries:
+            continue
+
         # Similarity threshold filter
         similarity = result.get('similarity', 1.0)
         if similarity < similarity_threshold:
@@ -206,6 +228,14 @@ def display_unified_search_results(
     
     # Display search summary
     st.success(f"✅ Found {len(results)} results using {search_results.get('strategy', 'unknown')} strategy")
+
+    applied_regions = search_results.get('regions_applied') or []
+    applied_countries = search_results.get('countries_applied') or []
+    if applied_regions or applied_countries:
+        st.caption(
+            f"🌍 Applied Filters → Regions: {', '.join(applied_regions) if applied_regions else 'None'} | "
+            f"Countries: {', '.join(applied_countries) if applied_countries else 'None'}"
+        )
     
     # Display search strategy info
     if search_results.get('analysis'):
@@ -312,12 +342,25 @@ def render_search_suggestions(tab_context: str = "general"):
     # Get suggestions based on tab context
     suggestions = get_contextual_suggestions(tab_context)
     
+    # Handle previous suggestion selection - update search input state BEFORE widgets are created
+    suggestion_key = f"selected_suggestion_{tab_context}"
+    if suggestion_key in st.session_state:
+        selected = st.session_state[suggestion_key]
+        # Update the search input value in session state (before widget creation)
+        search_input_key = f"unified_search_{tab_context}"
+        st.session_state[search_input_key] = selected
+        # Clear the selection after handling
+        del st.session_state[suggestion_key]
+    
     # Display suggestions in columns
     cols = st.columns(3)
     for i, suggestion in enumerate(suggestions):
         with cols[i % 3]:
-            if st.button(suggestion, key=f"suggestion_{i}_{tab_context}", use_container_width=True):
-                st.session_state[f"unified_search_{tab_context}"] = suggestion
+            # Use a unique key for each suggestion button
+            button_key = f"suggestion_btn_{i}_{tab_context}"
+            if st.button(suggestion, key=button_key, use_container_width=True):
+                # Store the selected suggestion in a separate session state key
+                st.session_state[f"selected_suggestion_{tab_context}"] = suggestion
                 st.rerun()
 
 

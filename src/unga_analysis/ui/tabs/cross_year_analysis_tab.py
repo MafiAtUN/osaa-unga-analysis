@@ -6,8 +6,13 @@ Handles the cross-year analysis interface with topic and question dropdowns
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Set
 from src.unga_analysis.data.cross_year_analysis import CrossYearAnalysisManager
+from src.unga_analysis.data.data_ingestion import get_country_region_lookup
+from src.unga_analysis.utils.region_utils import (
+    extract_regions_and_countries,
+    expand_regions_to_countries,
+)
 from src.unga_analysis.utils.data_limitation_handler import data_limitation_handler
 
 
@@ -413,25 +418,58 @@ def render_text_analysis_interface():
     
     # Step 2: Country/Group Selection
     st.subheader("🎯 Step 2: Select Countries or Groups")
-    
+    selected_countries: List[str] = []
+    selected_regions: List[str] = []
+    region_countries: Set[str] = set()
+
     if selected_category == "Individual Countries":
         # Get all available countries
         all_countries = get_all_countries()
-        
+        country_region_lookup = get_country_region_lookup()
+        available_regions = cross_year_manager.get_available_regions()
+
         st.markdown("**Select one or more countries to analyze:**")
-        selected_countries = st.multiselect(
+        selected_countries_manual = st.multiselect(
             "Choose countries:",
             options=all_countries,
             default=[],
             help="Select one or more countries for analysis. You can search by typing country names.",
             placeholder="Start typing to search countries..."
         )
-        
+
+        selected_regions = st.multiselect(
+            "Or choose regions (adds all countries in each region):",
+            options=available_regions,
+            default=[],
+            help="Select one or more regions to automatically include all member countries."
+        )
+
+        if selected_regions:
+            for country_name, labels in country_region_lookup.items():
+                if any(region in labels for region in selected_regions):
+                    region_countries.add(country_name)
+
+            if region_countries:
+                preview_list = sorted(region_countries)
+                st.caption(
+                    f"🌍 Regions selected cover {len(region_countries)} countries. "
+                    f"Examples: {', '.join(preview_list[:10])}{' …' if len(preview_list) > 10 else ''}"
+                )
+            else:
+                st.warning("No countries found for the selected regions. Try a different selection.")
+
+        selected_countries = sorted(set(selected_countries_manual) | region_countries)
+
         if selected_countries:
-            selected_target = ", ".join(selected_countries)
+            display_parts = []
+            if selected_countries_manual:
+                display_parts.append(", ".join(selected_countries_manual))
+            if selected_regions:
+                display_parts.append(f"Regions: {', '.join(selected_regions)}")
+            selected_target = " | ".join(display_parts) if display_parts else None
         else:
             selected_target = None
-            
+
     else:  # Country Groups
         target_options = list(country_group_questions[selected_category].keys())
         selected_target = st.selectbox(
@@ -480,7 +518,7 @@ def render_text_analysis_interface():
                 help="Select a specific question to analyze"
             )
             
-            selected_question = questions[selected_question_idx]
+        selected_question = questions[selected_question_idx]
         
         # Step 5: Customize Prompt
         st.subheader("✏️ Step 5: Customize Your Analysis Prompt")
@@ -509,6 +547,31 @@ def render_text_analysis_interface():
         
         # Update session state
         st.session_state.analysis_prompt = customized_prompt
+
+        # Detect additional regions/countries from the prompt text
+        prompt_regions, prompt_countries = extract_regions_and_countries(customized_prompt)
+
+        auto_regions = [region for region in prompt_regions if region not in selected_regions]
+        if auto_regions:
+            selected_regions.extend(auto_regions)
+            st.caption(
+                f"🧠 Detected regions in prompt: {', '.join(auto_regions)} (automatically added to analysis)."
+            )
+
+        additional_countries = set(selected_countries)
+        additional_countries.update(prompt_countries)
+        additional_countries.update(expand_regions_to_countries(prompt_regions))
+        additional_countries.update(region_countries)
+        selected_countries = sorted(additional_countries)
+        selected_regions = sorted(set(selected_regions))
+
+        if selected_countries or selected_regions:
+            display_parts = []
+            if selected_countries:
+                display_parts.append(f"Countries: {', '.join(selected_countries)}")
+            if selected_regions:
+                display_parts.append(f"Regions: {', '.join(selected_regions)}")
+            selected_target = " | ".join(display_parts)
         
         # Step 6: Run Analysis
         st.subheader("🚀 Step 6: Execute Analysis")
@@ -516,7 +579,7 @@ def render_text_analysis_interface():
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            if st.button("🔍 Analyze", type="primary", use_container_width=True):
+            if st.button("🔍 Analyze", type="primary", use_container_width=True, key="cross_year_analyze"):
                 if customized_prompt.strip():
                     with st.spinner("Analyzing data across years..."):
                         try:
@@ -525,7 +588,7 @@ def render_text_analysis_interface():
                             
                             # Prepare countries parameter
                             countries_to_analyze = []
-                            if selected_category == "Individual Countries" and selected_countries:
+                            if selected_category == "Individual Countries":
                                 countries_to_analyze = selected_countries
                             
                             # Use a more appropriate year range based on the query
@@ -536,6 +599,8 @@ def render_text_analysis_interface():
                             
                             # Debug: Show what we're analyzing
                             st.info(f"🔍 Analyzing: {len(countries_to_analyze)} countries, {len(years_to_analyze)} years")
+                            if selected_regions:
+                                st.info(f"🌍 Regions: {', '.join(selected_regions)}")
                             if countries_to_analyze:
                                 st.info(f"📊 Countries: {', '.join(countries_to_analyze)}")
                             st.info(f"📅 Year range: {years_to_analyze[0]}-{years_to_analyze[-1]}")
@@ -879,7 +944,7 @@ Using the {len(speeches)} speeches in the dataset and the excerpts above:
                     st.warning("⚠️ Please enter a prompt to analyze.")
         
         with col2:
-            if st.button("🔄 Reset Prompt", use_container_width=True):
+            if st.button("🔄 Reset Prompt", use_container_width=True, key="cross_year_reset"):
                 st.session_state.analysis_prompt = selected_question
                 st.rerun()
     

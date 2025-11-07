@@ -38,9 +38,10 @@ class ImprovedVisualizationManager:
             years_result = self.db_manager.conn.execute("SELECT DISTINCT year FROM speeches ORDER BY year").fetchall()
             self.available_years = [row[0] for row in years_result]
             
-            # Get available regions
-            regions_result = self.db_manager.conn.execute("SELECT DISTINCT region FROM speeches ORDER BY region").fetchall()
-            self.available_regions = [row[0] for row in regions_result]
+            # Get available regions (primary + extended)
+            from src.unga_analysis.data.data_ingestion import get_all_region_labels
+
+            self.available_regions = [region for region in get_all_region_labels() if region and region != "Unknown"]
             
         except Exception as e:
             logger.error(f"Error loading metadata: {e}")
@@ -516,7 +517,7 @@ class ImprovedVisualizationManager:
             SELECT 
                 year,
                 country_name,
-                region,
+                country_code,
                 speech_text,
                 word_count,
                 CASE 
@@ -527,10 +528,6 @@ class ImprovedVisualizationManager:
             AND ({' OR '.join(topic_conditions)})
             """
             
-            if regions:
-                region_conditions = "', '".join(regions)
-                query += f" AND region IN ('{region_conditions}')"
-            
             # Execute query
             result = self.db_manager.conn.execute(query).fetchall()
             
@@ -538,7 +535,18 @@ class ImprovedVisualizationManager:
                 return pd.DataFrame()
             
             # Convert to DataFrame
-            df = pd.DataFrame(result, columns=['year', 'country_name', 'region', 'speech_text', 'word_count', 'topic'])
+            df = pd.DataFrame(result, columns=['year', 'country_name', 'country_code', 'speech_text', 'word_count', 'topic'])
+
+            from src.unga_analysis.data.data_ingestion import get_regions_for_code
+
+            df['regions'] = df['country_code'].apply(get_regions_for_code)
+            df['region'] = df['regions'].apply(lambda r: r[0] if r else 'Unknown')
+            df = df.drop(columns=['country_code'])
+
+            if regions:
+                df = df[df['regions'].apply(lambda region_list: any(region in regions for region in region_list))]
+                if df.empty:
+                    return pd.DataFrame()
             
             # Calculate mentions per 1000 words
             df['mentions_per_1000_words'] = df.apply(lambda row: self._count_topic_mentions(row['speech_text'], row['topic'], topic_keywords) / (row['word_count'] / 1000), axis=1)
@@ -622,58 +630,69 @@ class ImprovedVisualizationManager:
     def _get_regional_data_safe(self, regions: List[str], metric: str) -> pd.DataFrame:
         """Get regional data with proper error handling."""
         try:
-            # Build query based on metric
-            if metric == "Speech Count":
+            from src.unga_analysis.data.data_ingestion import get_country_region_lookup
+
+            country_to_regions = get_country_region_lookup()
+
+            # Build region -> countries mapping
+            region_to_countries: Dict[str, List[str]] = {}
+            for country, region_list in country_to_regions.items():
+                for region in region_list:
+                    region_to_countries.setdefault(region, []).append(country)
+
+            rows = []
+
+            for region in regions:
+                countries = region_to_countries.get(region, [])
+                if not countries:
+                    continue
+
+                placeholders = ','.join(['?' for _ in countries])
                 query = f"""
-                SELECT region, COUNT(*) as value
-                FROM speeches 
-                WHERE region IN ({', '.join([f"'{r}'" for r in regions])})
-                GROUP BY region
-                ORDER BY value DESC
+                    SELECT country_name, word_count, speech_text
+                    FROM speeches
+                    WHERE country_name IN ({placeholders})
                 """
-            elif metric == "Average Word Count":
-                query = f"""
-                SELECT region, AVG(word_count) as value
-                FROM speeches 
-                WHERE region IN ({', '.join([f"'{r}'" for r in regions])})
-                GROUP BY region
-                ORDER BY value DESC
-                """
-            elif metric == "Topic Diversity":
-                query = f"""
-                SELECT region, COUNT(DISTINCT CASE 
-                    WHEN LOWER(speech_text) LIKE '%climate%' OR 
-                         LOWER(speech_text) LIKE '%peace%' OR 
-                         LOWER(speech_text) LIKE '%development%' THEN 1 
-                END) as value
-                FROM speeches 
-                WHERE region IN ({', '.join([f"'{r}'" for r in regions])})
-                GROUP BY region
-                ORDER BY value DESC
-                """
-            else:  # Sentiment Score
-                query = f"""
-                SELECT region, 
-                       AVG((LENGTH(speech_text) - LENGTH(REPLACE(LOWER(speech_text), 'peace', ''))) - 
-                           (LENGTH(speech_text) - LENGTH(REPLACE(LOWER(speech_text), 'conflict', '')))) as value
-                FROM speeches 
-                WHERE region IN ({', '.join([f"'{r}'" for r in regions])})
-                GROUP BY region
-                ORDER BY value DESC
-                """
-            
-            # Execute query
-            result = self.db_manager.conn.execute(query).fetchall()
-            
-            if not result:
+
+                records = self.db_manager.conn.execute(query, countries).fetchall()
+
+                if not records:
+                    continue
+
+                if metric == "Speech Count":
+                    value = len(records)
+                elif metric == "Average Word Count":
+                    word_counts = [row[1] or 0 for row in records]
+                    value = float(np.mean(word_counts)) if word_counts else 0
+                elif metric == "Topic Diversity":
+                    topic_keywords = {
+                        'climate': ['climate', 'emission', 'carbon'],
+                        'peace': ['peace', 'security', 'conflict'],
+                        'development': ['development', 'poverty', 'economic']
+                    }
+                    topics_present = set()
+                    for _, _, text in records:
+                        text_lower = (text or '').lower()
+                        for topic_key, keywords in topic_keywords.items():
+                            if any(keyword in text_lower for keyword in keywords):
+                                topics_present.add(topic_key)
+                    value = float(len(topics_present))
+                else:  # Sentiment Score
+                    sentiment_scores = []
+                    for _, _, text in records:
+                        text_lower = (text or '').lower()
+                        positive = text_lower.count('peace')
+                        negative = text_lower.count('conflict')
+                        sentiment_scores.append(positive - negative)
+                    value = float(np.mean(sentiment_scores)) if sentiment_scores else 0
+
+                rows.append({'region': region, 'value': value, 'metric': metric})
+
+            if not rows:
                 return pd.DataFrame()
-            
-            # Convert to DataFrame
-            df = pd.DataFrame(result, columns=['region', 'value'])
-            df['metric'] = metric
-            
-            return df
-            
+
+            return pd.DataFrame(rows)
+
         except Exception as e:
             logger.error(f"Error getting regional data: {e}")
             return pd.DataFrame()

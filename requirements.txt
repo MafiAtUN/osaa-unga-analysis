@@ -21,6 +21,8 @@ pypdf>=3.0.0
 python-docx>=0.8.11
 pdfminer.six>=20221105
 pydub>=0.25.1
+langdetect>=1.0.9
+deep-translator>=1.11.4
 
 # Database & Storage
 tiktoken>=0.5.0

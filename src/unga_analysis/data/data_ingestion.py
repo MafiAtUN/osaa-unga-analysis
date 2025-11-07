@@ -4,6 +4,8 @@ Handles importing speech data from files and managing the database.
 """
 
 import os
+import csv
+import json
 import logging
 from typing import Dict, List, Optional, Tuple
 from pathlib import Path
@@ -13,6 +15,101 @@ from .simple_vector_storage import simple_vector_storage as db_manager
 from ..core.classify import get_au_members
 
 logger = logging.getLogger(__name__)
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+COUNTRY_CLASSIFICATIONS_PATH = PROJECT_ROOT / "artifacts" / "Country classifications.csv"
+
+ADDITIONAL_REGION_LABELS = {
+    "Northern Africa",
+    "Sub-Saharan Africa",
+    "Middle Africa",
+    "Southern Africa",
+    "Eastern Africa",
+    "East Africa",
+    "Western Africa",
+    "Central Africa",
+    "Americas",
+    "Latin America and the Caribbean",
+    "Central America",
+    "Northern America",
+    "Arab states",
+    "Southern Asia",
+    "South-eastern Asia",
+    "Eastern Asia",
+    "Western Asia",
+    "Central Asia",
+    "Australia and New Zealand",
+    "Melanesia",
+    "Micronesia",
+    "Polynesia",
+    "Northern Europe",
+    "Southern Europe",
+    "Western Europe",
+    "Eastern Europe",
+}
+
+_EXTENDED_REGION_GROUPINGS: Dict[str, List[str]] = {}
+
+
+def get_additional_region_groupings_for_code(country_code: str) -> List[str]:
+    """Return additional region groupings for the provided ISO3 code."""
+    if not country_code:
+        return []
+    groupings = _load_extended_region_groupings()
+    return groupings.get(country_code.upper(), [])
+
+
+def get_regions_for_code(country_code: str, include_additional: bool = True) -> List[str]:
+    """Get ordered list of regions (primary + optional additional) for a country code."""
+    code = (country_code or "").upper()
+    regions: List[str] = []
+
+    primary_region = REGION_MAPPING.get(code)
+    if primary_region:
+        regions.append(primary_region)
+
+    if include_additional:
+        for region in get_additional_region_groupings_for_code(code):
+            if region and region not in regions:
+                regions.append(region)
+
+    return regions
+
+
+def get_country_region_lookup(include_primary: bool = True, include_additional: bool = True) -> Dict[str, List[str]]:
+    """Build a lookup of country name -> list of associated regions."""
+    lookup: Dict[str, List[str]] = {}
+
+    for code, name in COUNTRY_CODE_MAPPING.items():
+        region_list: List[str] = []
+
+        if include_primary:
+            primary_region = REGION_MAPPING.get(code)
+            if primary_region:
+                region_list.append(primary_region)
+
+        if include_additional:
+            for region in get_additional_region_groupings_for_code(code):
+                if region and region not in region_list:
+                    region_list.append(region)
+
+        lookup[name] = region_list
+
+    return lookup
+
+
+def get_all_region_labels(include_primary: bool = True, include_additional: bool = True) -> List[str]:
+    """Return sorted list of all known region labels."""
+    labels = set()
+
+    if include_primary:
+        labels.update(region for region in REGION_MAPPING.values() if region)
+
+    if include_additional:
+        for region_list in _load_extended_region_groupings().values():
+            labels.update(region for region in region_list if region)
+
+    return sorted(labels)
 
 # Language detection and translation
 try:
@@ -138,12 +235,103 @@ REGION_MAPPING = {
     'LCA': 'Caribbean', 'VCT': 'Caribbean'
 }
 
+def _load_extended_region_groupings() -> Dict[str, List[str]]:
+    """Load additional region groupings from the country classifications artifact."""
+    global _EXTENDED_REGION_GROUPINGS
+
+    if _EXTENDED_REGION_GROUPINGS:
+        return _EXTENDED_REGION_GROUPINGS
+
+    # Ensure region_groupings table exists
+    try:
+        db_manager.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS region_groupings (
+                country_code VARCHAR(3) NOT NULL,
+                region_label VARCHAR NOT NULL,
+                UNIQUE(country_code, region_label)
+            )
+            """
+        )
+    except Exception as exc:
+        logger.error("Failed to ensure region_groupings table exists: %s", exc)
+
+    # Attempt to load from database first
+    try:
+        rows = db_manager.conn.execute(
+            "SELECT country_code, region_label FROM region_groupings"
+        ).fetchall()
+        if rows:
+            loaded: Dict[str, set] = {}
+            for code, label in rows:
+                if not code or not label:
+                    continue
+                loaded.setdefault(code.upper(), set()).add(label)
+            _EXTENDED_REGION_GROUPINGS = {
+                code: sorted(labels)
+                for code, labels in loaded.items()
+            }
+            return _EXTENDED_REGION_GROUPINGS
+    except Exception as exc:
+        logger.error("Failed to read region_groupings table: %s", exc)
+
+    # Fall back to CSV seeding if table is empty
+    if not COUNTRY_CLASSIFICATIONS_PATH.exists():
+        logger.warning(
+            "Country classifications file not found at %s and region_groupings table is empty",
+            COUNTRY_CLASSIFICATIONS_PATH,
+        )
+        _EXTENDED_REGION_GROUPINGS = {}
+        return _EXTENDED_REGION_GROUPINGS
+
+    groupings: Dict[str, set] = {}
+
+    try:
+        with COUNTRY_CLASSIFICATIONS_PATH.open(newline="", encoding="utf-8") as csv_file:
+            reader = csv.DictReader(csv_file)
+            for row in reader:
+                iso3 = (row.get("iso3") or "").strip().upper()
+                grouping = (row.get("country_grouping") or "").strip()
+
+                if not iso3 or not grouping:
+                    continue
+
+                if grouping not in ADDITIONAL_REGION_LABELS:
+                    continue
+
+                groupings.setdefault(iso3, set()).add(grouping)
+
+        if groupings:
+            insert_rows = {
+                (code, label)
+                for code, labels in groupings.items()
+                for label in labels
+            }
+            db_manager.conn.executemany(
+                "INSERT OR IGNORE INTO region_groupings (country_code, region_label) VALUES (?, ?)",
+                list(insert_rows)
+            )
+            db_manager.conn.commit()
+
+        _EXTENDED_REGION_GROUPINGS = {
+            iso3: sorted(group_list)
+            for iso3, group_list in groupings.items()
+        }
+
+    except Exception as exc:
+        logger.error("Failed to seed extended region groupings from CSV: %s", exc)
+        _EXTENDED_REGION_GROUPINGS = {}
+
+    return _EXTENDED_REGION_GROUPINGS
+
+
 class DataIngestionManager:
     """Manages data ingestion for UNGA speech data."""
     
     def __init__(self):
         self.db_manager = db_manager
         self.au_members = get_au_members()
+        self.extended_region_groupings = _load_extended_region_groupings()
     
     def get_country_name_from_code(self, country_code: str) -> str:
         """Get full country name from ISO3 code."""
@@ -151,7 +339,100 @@ class DataIngestionManager:
     
     def get_region_from_code(self, country_code: str) -> str:
         """Get region from ISO3 country code."""
-        return REGION_MAPPING.get(country_code.upper(), 'Unknown')
+        code = country_code.upper()
+
+        if code in REGION_MAPPING:
+            return REGION_MAPPING[code]
+
+        # Fallback to extended groupings if available
+        additional_regions = self.get_additional_regions_for_code(code)
+        return additional_regions[0] if additional_regions else 'Unknown'
+
+    def get_additional_regions_for_code(self, country_code: str) -> List[str]:
+        """Return additional region groupings for the provided ISO3 country code."""
+        return self.extended_region_groupings.get(country_code.upper(), [])
+    
+    def update_all_region_metadata(self) -> Dict[str, any]:
+        """
+        Update metadata for all speech records with extended region groupings.
+        
+        Returns:
+            Dictionary summarizing the migration results.
+        """
+        stats = {
+            "total": 0,
+            "updated": 0,
+            "skipped": 0,
+            "missing_groupings": set()
+        }
+        
+        try:
+            rows = self.db_manager.conn.execute("""
+                SELECT id, country_code, region, metadata
+                FROM speeches
+            """).fetchall()
+        except Exception as exc:
+            logger.error("Failed to fetch speech records for region update: %s", exc)
+            return stats
+        
+        stats["total"] = len(rows)
+        
+        for speech_id, country_code, primary_region, metadata_json in rows:
+            country_code = (country_code or "").upper()
+            additional_regions = self.get_additional_regions_for_code(country_code)
+            
+            if not additional_regions:
+                stats["missing_groupings"].add(country_code)
+            
+            try:
+                metadata = json.loads(metadata_json) if metadata_json else {}
+            except Exception as exc:
+                logger.warning(
+                    "Invalid metadata JSON for speech %s (country %s): %s",
+                    speech_id,
+                    country_code,
+                    exc
+                )
+                metadata = {}
+            
+            metadata = metadata or {}
+            regions_meta = metadata.get("regions", {})
+            
+            changed = False
+            
+            if metadata.get("country_code") != country_code:
+                metadata["country_code"] = country_code
+                changed = True
+            
+            if regions_meta.get("primary") != primary_region:
+                regions_meta["primary"] = primary_region
+                changed = True
+            
+            if regions_meta.get("additional") != additional_regions:
+                regions_meta["additional"] = additional_regions
+                changed = True
+            
+            if changed:
+                metadata["regions"] = regions_meta
+                if self.db_manager.update_speech_metadata(speech_id, metadata):
+                    stats["updated"] += 1
+                else:
+                    logger.error("Failed to persist metadata for speech %s", speech_id)
+            else:
+                stats["skipped"] += 1
+        
+        stats["missing_groupings"] = sorted(
+            [code for code in stats["missing_groupings"] if code]
+        )
+        
+        logger.info(
+            "Region metadata update completed: %s updated, %s skipped, %s missing groupings",
+            stats["updated"],
+            stats["skipped"],
+            len(stats["missing_groupings"])
+        )
+        
+        return stats
     
     def is_african_member(self, country_name: str) -> bool:
         """Check if country is an African Union member."""
@@ -306,6 +587,16 @@ class DataIngestionManager:
                 source_lang = detected_lang
             
             # Save to database
+            additional_regions = self.get_additional_regions_for_code(country_code)
+
+            metadata = {
+                "country_code": country_code,
+                "regions": {
+                    "primary": region,
+                    "additional": additional_regions,
+                }
+            }
+
             speech_id = self.db_manager.save_speech_data(
                 country_code=country_code,
                 country_name=country_name,
@@ -314,7 +605,8 @@ class DataIngestionManager:
                 year=year,
                 speech_text=speech_text,
                 source_filename=filename,
-                is_african_member=is_african_member
+                is_african_member=is_african_member,
+                metadata=metadata
             )
             
             logger.info(f"Successfully ingested {filename} -> {country_name} ({country_code})")

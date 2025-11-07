@@ -15,6 +15,7 @@ import logging
 from datetime import datetime
 import re
 from collections import Counter, defaultdict
+from src.unga_analysis.data.data_ingestion import get_all_region_labels
 
 logger = logging.getLogger(__name__)
 
@@ -163,20 +164,13 @@ class UNGAVisualizationManager:
                 help="Select the time period to analyze. Longer periods show more trends, shorter periods show recent patterns."
             )
             
-            # Region filter - get actual regions from database
-            try:
-                available_regions_query = self.db_manager.conn.execute("""
-                    SELECT DISTINCT region 
-                    FROM speeches 
-                    WHERE region IS NOT NULL 
-                    ORDER BY region
-                """).fetchall()
-                available_regions = [r[0] for r in available_regions_query if r[0]]
-                
-                if not available_regions:
-                    available_regions = ["Africa", "Asia", "Europe", "North America", "South America", "Oceania", "Caribbean"]
-            except:
-                available_regions = ["Africa", "Asia", "Europe", "North America", "South America", "Oceania", "Caribbean"]
+            # Region filter - include extended regional groupings
+            available_regions = [region for region in get_all_region_labels() if region and region != "Unknown"]
+
+            if not available_regions:
+                available_regions = [
+                    "Africa", "Asia", "Europe", "North America", "South America", "Oceania", "Caribbean"
+                ]
             
             regions = st.multiselect(
                 "Regions (optional)",
@@ -295,15 +289,10 @@ class UNGAVisualizationManager:
     def _get_speeches_for_topics(self, year_range, regions):
         """Get speeches from database for topic analysis."""
         try:
-            # Get country-to-region mapping
-            from src.unga_analysis.data.data_ingestion import COUNTRY_CODE_MAPPING, REGION_MAPPING
-            
-            # Create reverse mapping: country name -> region
-            country_to_region = {}
-            for code, name in COUNTRY_CODE_MAPPING.items():
-                region = REGION_MAPPING.get(code)
-                if region:
-                    country_to_region[name] = region
+            # Get country-to-region mapping including extended regions
+            from src.unga_analysis.data.data_ingestion import get_country_region_lookup
+
+            country_to_regions = get_country_region_lookup()
             
             # Build query - DON'T use region column, use country names instead
             where_conditions = [
@@ -316,7 +305,10 @@ class UNGAVisualizationManager:
             params = []
             if regions:
                 # Get all countries in the selected regions
-                countries_in_regions = [name for name, reg in country_to_region.items() if reg in regions]
+                countries_in_regions = [
+                    name for name, region_list in country_to_regions.items()
+                    if any(region in regions for region in region_list)
+                ]
                 if countries_in_regions:
                     # Use parameterized query to avoid SQL injection with apostrophes
                     placeholders = ','.join(['?' for _ in countries_in_regions])
@@ -349,13 +341,15 @@ class UNGAVisualizationManager:
                 if len(row) >= 3:
                     country_name = row[0]
                     # Derive region from country name using mapping
-                    derived_region = country_to_region.get(country_name, 'Unknown')
+                    region_list = country_to_regions.get(country_name, [])
+                    derived_region = region_list[0] if region_list else 'Unknown'
                     
                     speeches.append({
                         'country': country_name,
                         'year': row[1],
                         'text': row[2],
-                        'region': derived_region  # Derived from country mapping
+                        'region': derived_region,
+                        'regions': region_list
                     })
             
             return speeches
@@ -677,24 +671,13 @@ class UNGAVisualizationManager:
             selected_entities = []
             if analysis_mode == "Regions":
                 # Get available regions dynamically
-                try:
-                    available_regions_query = self.db_manager.conn.execute("""
-                        SELECT DISTINCT region 
-                        FROM speeches 
-                        WHERE region IS NOT NULL 
-                        ORDER BY region
-                    """).fetchall()
-                    available_regions = [r[0] for r in available_regions_query if r[0]]
-                    
-                    if not available_regions:
-                        available_regions = ["Africa", "Asia", "Europe", "North America", "South America", "Oceania", "Caribbean"]
-                except:
-                    available_regions = ["Africa", "Asia", "Europe", "North America", "South America", "Oceania", "Caribbean"]
-                
+                available_regions = [label for label in get_all_region_labels() if label and label != "Unknown"]
+                default_regions = available_regions[:3] if available_regions else []
+
                 selected_entities = st.multiselect(
                     "Select Regions to Compare",
                     options=available_regions,
-                    default=["Africa", "Asia", "Europe"],
+                    default=default_regions,
                     key="trends_regions_input",
                     help="Compare keyword usage across regions"
                 )
@@ -733,14 +716,9 @@ class UNGAVisualizationManager:
     def _create_keyword_trend_comparison(self, keyword, year_range, mode, entities):
         """Create multi-entity keyword trend comparison visualization."""
         try:
-            from src.unga_analysis.data.data_ingestion import COUNTRY_CODE_MAPPING, REGION_MAPPING
-            
-            # Create country-to-region mapping
-            country_to_region = {}
-            for code, name in COUNTRY_CODE_MAPPING.items():
-                region = REGION_MAPPING.get(code)
-                if region:
-                    country_to_region[name] = region
+            from src.unga_analysis.data.data_ingestion import get_country_region_lookup
+
+            country_to_regions = get_country_region_lookup()
             
             keyword_lower = keyword.lower()
             
@@ -760,7 +738,10 @@ class UNGAVisualizationManager:
                     
                     for region in entities:
                         # Get countries in this region
-                        countries_in_region = [name for name, reg in country_to_region.items() if reg == region]
+                        countries_in_region = [
+                            name for name, region_list in country_to_regions.items()
+                            if region in region_list
+                        ]
                         
                         if not countries_in_region:
                             continue

@@ -11,6 +11,10 @@ from ...data.simple_vector_storage import simple_vector_storage as db_manager
 from ...core.llm import run_analysis, get_available_models
 from ...core.openai_client import get_openai_client
 from ...core.enhanced_search_engine import get_enhanced_search_engine
+from ...utils.region_utils import (
+    extract_regions_and_countries,
+    expand_regions_to_countries,
+)
 from ..unified_search_interface import render_unified_search_interface, render_search_suggestions
 
 
@@ -25,11 +29,11 @@ def render_database_chat_tab():
     
     st.markdown("---")
     
-    # Unified search interface
-    search_results = render_unified_search_interface("database_chat")
-    
-    # Search suggestions
+    # Search suggestions (render first to handle state before widgets)
     render_search_suggestions("database_chat")
+    
+    # Unified search interface (render after suggestions to pick up updates)
+    search_results = render_unified_search_interface("database_chat")
     
     # Legacy chat interface (for backward compatibility)
     st.markdown("---")
@@ -129,9 +133,19 @@ def comprehensive_database_search(question: str) -> Dict[str, Any]:
         question_lower = question.lower()
         
         # Extract entities from the question
-        countries = extract_countries_from_question(question)
+        regions_detected, countries_detected = extract_regions_and_countries(question)
+        countries = sorted(set(countries_detected))
+        regions = regions_detected
         years = extract_years_from_question(question)
         topics = extract_topics_from_question(question)
+
+        st.caption(
+            "🔍 Extracted Entities → "
+            f"Countries: {', '.join(countries) if countries else 'None'} | "
+            f"Regions: {', '.join(regions) if regions else 'None'} | "
+            f"Years: {', '.join(map(str, years)) if years else 'None'} | "
+            f"Topics: {', '.join(topics) if topics else 'None'}"
+        )
         
         # Build comprehensive search query
         search_results = {
@@ -144,7 +158,7 @@ def comprehensive_database_search(question: str) -> Dict[str, Any]:
         }
         
         # Search for speeches based on extracted entities
-        speeches_data = search_speeches_by_entities(countries, years, topics, question)
+        speeches_data = search_speeches_by_entities(countries, regions, years, topics, question)
         
         if speeches_data:
             search_results['speeches'] = speeches_data
@@ -185,45 +199,6 @@ def comprehensive_database_search(question: str) -> Dict[str, Any]:
         return {'summary': f'Search error: {e}', 'table_data': None, 'speeches': []}
 
 
-def extract_countries_from_question(question: str) -> List[str]:
-    """Extract country names from the question."""
-    question_lower = question.lower()
-    countries = []
-    
-    # Comprehensive country mapping
-    country_mappings = {
-        'china': ['china', 'chinese', 'peoples republic of china', 'prc'],
-        'united states': ['united states', 'usa', 'us', 'america', 'american'],
-        'russia': ['russia', 'russian', 'soviet union', 'ussr'],
-        'united kingdom': ['united kingdom', 'uk', 'britain', 'british'],
-        'france': ['france', 'french'],
-        'germany': ['germany', 'german'],
-        'japan': ['japan', 'japanese'],
-        'india': ['india', 'indian'],
-        'brazil': ['brazil', 'brazilian'],
-        'canada': ['canada', 'canadian'],
-        'australia': ['australia', 'australian'],
-        'south africa': ['south africa', 'south african'],
-        'nigeria': ['nigeria', 'nigerian'],
-        'egypt': ['egypt', 'egyptian'],
-        'turkey': ['turkey', 'turkish'],
-        'iran': ['iran', 'iranian'],
-        'saudi arabia': ['saudi arabia', 'saudi'],
-        'african': ['african', 'africa'],
-        'european': ['european', 'europe'],
-        'asian': ['asian', 'asia'],
-        'latin american': ['latin american', 'latin america'],
-        'developing': ['developing countries', 'developing'],
-        'developed': ['developed countries', 'developed']
-    }
-    
-    for country, variations in country_mappings.items():
-        if any(var in question_lower for var in variations):
-            countries.append(country)
-    
-    return countries
-
-
 def extract_years_from_question(question: str) -> List[int]:
     """Extract years from the question."""
     import re
@@ -256,33 +231,33 @@ def extract_topics_from_question(question: str) -> List[str]:
     return topics
 
 
-def search_speeches_by_entities(countries: List[str], years: List[int], topics: List[str], question: str) -> List[Dict[str, Any]]:
+def search_speeches_by_entities(countries: List[str], regions: List[str], years: List[int], topics: List[str], question: str) -> List[Dict[str, Any]]:
     """Search speeches based on extracted entities."""
     try:
         # Build SQL query based on available entities
         where_conditions = []
         params = []
+
+        countries = sorted(set(countries))
+        regions = sorted(set(regions))
         
         # Country conditions
         if countries:
             country_conditions = []
             for country in countries:
-                if country.lower() in ['african', 'european', 'asian', 'latin american', 'developing', 'developed']:
-                    # Handle regional/group searches
-                    if country.lower() == 'african':
-                        country_conditions.append("region ILIKE '%africa%'")
-                    elif country.lower() == 'european':
-                        country_conditions.append("region ILIKE '%europe%'")
-                    elif country.lower() == 'asian':
-                        country_conditions.append("region ILIKE '%asia%'")
-                    elif country.lower() == 'developing':
-                        country_conditions.append("region NOT ILIKE '%europe%' AND region NOT ILIKE '%north america%'")
-                else:
-                    country_conditions.append("country_name ILIKE ?")
-                    params.append(f"%{country}%")
+                country_conditions.append("country_name = ?")
+                params.append(country)
             
             if country_conditions:
                 where_conditions.append(f"({' OR '.join(country_conditions)})")
+
+        # Region conditions (expanded to countries)
+        if regions:
+            region_countries = expand_regions_to_countries(regions)
+            if region_countries:
+                placeholders = ','.join(['?' for _ in region_countries])
+                where_conditions.append(f"country_name IN ({placeholders})")
+                params.extend(region_countries)
         
         # Year conditions
         if years:

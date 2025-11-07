@@ -2,6 +2,8 @@
 Classification logic for African Member States vs Development Partners.
 """
 
+from typing import List
+
 # African Union member states (55 members)
 AU_MEMBERS = {
     "Algeria", "Angola", "Benin", "Botswana", "Burkina Faso", "Burundi", "Cabo Verde",
@@ -80,7 +82,7 @@ def is_african_member_state(country: str) -> bool:
     """Check if country is an African Member State."""
     return infer_classification(country) == "African Member State"
 
-def get_au_members() -> set:
-    """Get the set of AU member states."""
-    return AU_MEMBERS.copy()
+def get_au_members() -> List[str]:
+    """Get the list of AU member states."""
+    return sorted(AU_MEMBERS)
 

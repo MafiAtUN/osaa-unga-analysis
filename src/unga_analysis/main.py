@@ -31,6 +31,7 @@ from src.unga_analysis.ui.tabs.document_context_analysis_tab import render_docum
 from src.unga_analysis.ui.tabs.all_analyses_tab import render_all_analyses_tab
 from src.unga_analysis.ui.tabs.visualizations_tab import render_visualizations_tab
 from src.unga_analysis.ui.tabs.data_explorer_tab import render_data_explorer_tab
+from src.unga_analysis.ui.tabs.sdg_analysis_tab import render_sdg_analysis_tab
 from src.unga_analysis.ui.tabs.database_chat_tab import render_database_chat_tab
 from src.unga_analysis.ui.tabs.error_insights_tab import render_error_insights_tab
 from src.unga_analysis.ui.enhanced_ui_components import (
@@ -417,6 +418,7 @@ def main():
         {"name": "Cross-Year Analysis", "icon": "🌍", "description": "Compare speeches across years"},
         {"name": "Document Context", "icon": "📄", "description": "Analyze with additional context"},
         {"name": "All Analyses", "icon": "📚", "description": "View and manage past analyses"},
+        {"name": "SDG Analysis", "icon": "🌍", "description": "Track Sustainable Development Goals"},
         {"name": "Visualizations", "icon": "📊", "description": "Interactive charts and graphs"},
         {"name": "Data Explorer", "icon": "🗺️", "description": "Explore the database directly"},
         {"name": "Database Chat", "icon": "🗄️", "description": "Chat with the UNGA database"},
@@ -448,20 +450,23 @@ def main():
         render_all_analyses_tab()
     
     with tabs[4]:
-        render_visualizations_tab()
+        render_sdg_analysis_tab()
     
     with tabs[5]:
-        render_data_explorer_tab()
+        render_visualizations_tab()
     
     with tabs[6]:
-        render_database_chat_tab()
+        render_data_explorer_tab()
     
     with tabs[7]:
+        render_database_chat_tab()
+    
+    with tabs[8]:
         render_error_insights_tab()
     
     # Admin tab (only for admin users)
     if current_user.email == "islam50@un.org" and len(tabs) > 8:
-        with tabs[8]:
+        with tabs[9]:
             render_admin_tab()
     
     # Enhanced footer

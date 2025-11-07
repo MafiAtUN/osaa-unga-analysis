@@ -107,9 +107,16 @@ class SimpleVectorStorageManager:
                 raw_text TEXT,
                 prompt_used TEXT,
                 output_markdown TEXT,
-                metadata JSON
+                metadata JSON,
+                chat_history JSON
             )
         """)
+        
+        # Add chat_history column if it doesn't exist (migration for existing databases)
+        try:
+            self.conn.execute("ALTER TABLE analyses ADD COLUMN IF NOT EXISTS chat_history JSON")
+        except:
+            pass  # Column already exists or ALTER COLUMN IF NOT EXISTS not supported
         
         # Create indexes for performance
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_speeches_country_name ON speeches(country_name)")
@@ -117,6 +124,19 @@ class SimpleVectorStorageManager:
         # Note: region column doesn't exist in current database schema
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_country ON analyses(country)")
         self.conn.execute("CREATE INDEX IF NOT EXISTS idx_analyses_classification ON analyses(classification)")
+
+        # Region groupings table for extended classifications
+        self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS region_groupings (
+                country_code VARCHAR(3) NOT NULL,
+                region_label VARCHAR NOT NULL,
+                UNIQUE(country_code, region_label)
+            )
+            """
+        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_region_groupings_country ON region_groupings(country_code)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_region_groupings_label ON region_groupings(region_label)")
         
         # Note: DuckDB doesn't support vector indexes on FLOAT arrays yet
         # Vector similarity search will work without indexes, just slower for large datasets
@@ -226,6 +246,10 @@ class SimpleVectorStorageManager:
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [speech_id, country_code, country_name, region, session, year, speech_text,
                   word_count, embedding, metadata_json, is_african_member, source_filename])
+            
+            # Commit the transaction
+            self.conn.commit()
+            
             logger.info(f"Saved speech {speech_id} for {country_name} ({country_code}) with embedding")
             return speech_id
             
@@ -236,12 +260,14 @@ class SimpleVectorStorageManager:
     def save_analysis(self, country: str, classification: str, raw_text: str,
                      output_markdown: str, prompt_used: str, sdgs: List[int] = None,
                      africa_mentioned: bool = False, speech_date: str = None,
-                     source_filename: str = None, metadata: Dict = None) -> int:
-        """Save analysis to database."""
+                     source_filename: str = None, metadata: Dict = None,
+                     chat_history: List[Dict] = None) -> int:
+        """Save analysis to database with chat history."""
         try:
             # Prepare data
             sdgs_str = ",".join(map(str, sdgs)) if sdgs else None
             metadata_json = json.dumps(metadata or {})
+            chat_history_json = json.dumps(chat_history or [])
             
             # Get next ID
             max_id_result = self.conn.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM analyses").fetchone()
@@ -251,16 +277,59 @@ class SimpleVectorStorageManager:
             self.conn.execute("""
                 INSERT INTO analyses 
                 (id, country, classification, speech_date, sdgs, africa_mentioned, 
-                 source_filename, raw_text, prompt_used, output_markdown, metadata)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 source_filename, raw_text, prompt_used, output_markdown, metadata, chat_history)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [analysis_id, country, classification, speech_date, sdgs_str, africa_mentioned,
-                  source_filename, raw_text, prompt_used, output_markdown, metadata_json])
+                  source_filename, raw_text, prompt_used, output_markdown, metadata_json, chat_history_json])
+            
+            # Commit the transaction
+            self.conn.commit()
+            
             logger.info(f"Saved analysis {analysis_id} for {country}")
             return analysis_id
             
         except Exception as e:
             logger.error(f"Failed to save analysis: {e}")
             raise
+    
+    def update_analysis_chat_history(self, analysis_id: int, chat_history: List[Dict]) -> bool:
+        """Update chat history for an existing analysis."""
+        try:
+            chat_history_json = json.dumps(chat_history)
+            
+            self.conn.execute("""
+                UPDATE analyses 
+                SET chat_history = ?
+                WHERE id = ?
+            """, [chat_history_json, analysis_id])
+            
+            # Commit the transaction
+            self.conn.commit()
+            
+            logger.info(f"Updated chat history for analysis {analysis_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to update chat history: {e}")
+            return False
+    
+    def update_speech_metadata(self, speech_id: int, metadata: Dict[str, Any]) -> bool:
+        """Update metadata for an existing speech record."""
+        try:
+            metadata_json = json.dumps(metadata or {})
+            
+            self.conn.execute("""
+                UPDATE speeches
+                SET metadata = ?
+                WHERE id = ?
+            """, [metadata_json, speech_id])
+            
+            self.conn.commit()
+            logger.info(f"Updated metadata for speech {speech_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update metadata for speech {speech_id}: {e}")
+            return False
     
     def search_speeches(self, query_text: str = None, countries: List[str] = None, 
                        years: List[int] = None, regions: List[str] = None,
@@ -590,7 +659,8 @@ class SimpleVectorStorageManager:
     
     def save_speech_data(self, country_code: str, country_name: str, region: str, 
                         session: int, year: int, speech_text: str, 
-                        source_filename: str = None, is_african_member: bool = False) -> int:
+                        source_filename: str = None, is_african_member: bool = False,
+                        metadata: Dict = None) -> int:
         """Save speech data (alias for save_speech for compatibility)."""
         return self.save_speech(
             country_code=country_code,
@@ -600,7 +670,8 @@ class SimpleVectorStorageManager:
             year=year,
             speech_text=speech_text,
             source_filename=source_filename,
-            is_african_member=is_african_member
+            is_african_member=is_african_member,
+            metadata=metadata
         )
     
     def create_db_and_tables(self):

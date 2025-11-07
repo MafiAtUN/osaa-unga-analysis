@@ -6,7 +6,7 @@ Handles document-based analysis that combines uploaded documents with UNGA corpu
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Set
 import os
 import tempfile
 from pathlib import Path
@@ -17,6 +17,10 @@ from src.unga_analysis.core.llm import run_analysis, get_available_models
 from src.unga_analysis.data.simple_vector_storage import simple_vector_storage as db_manager
 from src.unga_analysis.utils.export_utils import create_export_files
 from src.unga_analysis.core.prompts import build_user_prompt
+from src.unga_analysis.utils.region_utils import (
+    extract_regions_and_countries,
+    expand_regions_to_countries,
+)
 
 # Import OpenAI client creation
 import openai
@@ -147,7 +151,7 @@ def render_document_context_analysis_tab():
         # Step 3: Analysis Button
         st.markdown("---")
         
-        if st.button("🚀 Start Analysis", type="primary", use_container_width=True):
+        if st.button("🚀 Start Analysis", type="primary", use_container_width=True, key="doc_context_start_analysis"):
             if not analysis_prompt.strip():
                 st.error("❌ Please provide analysis instructions.")
                 return
@@ -236,26 +240,74 @@ def process_document_analysis_simple(
             st.error("❌ No text could be extracted from uploaded files.")
             return None
         
+        detected_regions: Set[str] = set()
+        detected_countries: Set[str] = set()
+        for fragment in [analysis_prompt, additional_context, combined_text]:
+            regions_found, countries_found = extract_regions_and_countries(fragment)
+            detected_regions.update(regions_found)
+            detected_countries.update(countries_found)
+
+        if detected_regions:
+            st.caption(
+                f"🌍 Detected regions in prompt/context: {', '.join(sorted(detected_regions))}. "
+                "Historical search will focus on these areas."
+            )
+
         # Get historical context from UNGA corpus
         historical_context = ""
         similar_speeches = []
         
         # Search for similar content in the corpus
+        collected: Dict[int, Dict[str, Any]] = {}
+
+        target_countries = set(detected_countries)
+        target_countries.update(expand_regions_to_countries(detected_regions))
+
+        if target_countries:
+            targeted_results = db_manager.search_speeches(
+                countries=sorted(target_countries),
+                years=list(range(year_range[0], year_range[1] + 1)),
+                limit=max_context_speeches * 2,
+            )
+            for speech in targeted_results:
+                if 'id' in speech:
+                    collected[speech['id']] = speech
+
         search_results = db_manager.semantic_search(
             combined_text,
             limit=max_context_speeches
         )
-        
-        if search_results:
-            similar_speeches = search_results
-            
-            # Filter by year range
+
+        for speech in search_results or []:
+            if 'id' in speech:
+                collected[speech['id']] = speech
+
+        similar_speeches = list(collected.values())
+
+        # Filter by year range
+        similar_speeches = [
+            speech for speech in similar_speeches
+            if year_range[0] <= speech.get('year', 0) <= year_range[1]
+        ]
+
+        if detected_regions:
+            allowed_countries = set(expand_regions_to_countries(detected_regions))
+            if allowed_countries:
+                similar_speeches = [
+                    speech for speech in similar_speeches
+                    if speech.get('country_name') in allowed_countries
+                ]
+        elif detected_countries:
+            allowed_countries = set(detected_countries)
             similar_speeches = [
                 speech for speech in similar_speeches
-                if year_range[0] <= speech.get('year', 0) <= year_range[1]
+                if speech.get('country_name') in allowed_countries
             ]
-            
-            # Build historical context
+
+        similar_speeches.sort(key=lambda s: (s.get('year', 0), s.get('country_name', '')))
+        similar_speeches = similar_speeches[:max_context_speeches]
+
+        if similar_speeches:
             historical_context = build_historical_context(similar_speeches)
         
         # Build the final analysis prompt
@@ -297,6 +349,8 @@ def process_document_analysis_simple(
                 'total_word_count': len(combined_text.split()),
                 'similar_speeches_count': len(similar_speeches),
                 'year_range': year_range,
+                'detected_regions': sorted(detected_regions),
+                'detected_countries': sorted(detected_countries),
                 'analysis_result': {
                     'output_markdown': analysis_result,
                     'raw_output': analysis_result
@@ -320,7 +374,8 @@ def build_historical_context(similar_speeches: List[Dict]) -> str:
     context = "## Historical Context from UNGA Corpus\n\n"
     
     for i, speech in enumerate(similar_speeches[:10], 1):  # Limit to top 10
-        context += f"### {i}. {speech.get('country', 'Unknown')} ({speech.get('year', 'Unknown')})\n"
+        country_name = speech.get('country') or speech.get('country_name', 'Unknown')
+        context += f"### {i}. {country_name} ({speech.get('year', 'Unknown')})\n"
         context += f"**Speaker:** {speech.get('speaker', 'Unknown')}\n"
         context += f"**Similarity Score:** {speech.get('similarity', 0):.3f}\n"
         context += f"**Content:** {speech.get('speech_text', '')[:500]}...\n\n"
@@ -345,6 +400,15 @@ def render_document_analysis_results(analysis_result: Dict[str, Any]):
         st.metric("🔍 Historical Speeches", analysis_result['similar_speeches_count'])
     with col4:
         st.metric("📅 Year Range", f"{analysis_result['year_range'][0]}-{analysis_result['year_range'][1]}")
+
+    detected_regions = analysis_result.get('detected_regions') or []
+    detected_countries = analysis_result.get('detected_countries') or []
+    if detected_regions or detected_countries:
+        st.caption(
+            "🌍 Filters applied → "
+            f"Regions: {', '.join(detected_regions) if detected_regions else 'None'} | "
+            f"Countries: {', '.join(detected_countries) if detected_countries else 'Derived from regions'}"
+        )
     
     # Display the user's prompt
     st.markdown("### 📝 Your Analysis Request")
@@ -373,7 +437,7 @@ def render_document_analysis_results(analysis_result: Dict[str, Any]):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("📄 Export as DOCX", use_container_width=True):
+        if st.button("📄 Export as DOCX", use_container_width=True, key="doc_context_export_docx"):
             export_data = {
                 'analysis': analysis_result['analysis_result'],
                 'metadata': analysis_result,
@@ -383,7 +447,7 @@ def render_document_analysis_results(analysis_result: Dict[str, Any]):
             st.success("✅ Export files created!")
     
     with col2:
-        if st.button("📊 Export as Markdown", use_container_width=True):
+        if st.button("📊 Export as Markdown", use_container_width=True, key="doc_context_export_md"):
             # Create markdown export
             markdown_content = f"# Document Analysis Report\n\n"
             markdown_content += f"**Analysis Request:** {analysis_result['analysis_prompt']}\n"
@@ -402,7 +466,7 @@ def render_document_analysis_results(analysis_result: Dict[str, Any]):
             )
     
     with col3:
-        if st.button("📈 Export Historical Context", use_container_width=True):
+        if st.button("📈 Export Historical Context", use_container_width=True, key="doc_context_export_historical"):
             # Create CSV of similar speeches
             if analysis_result['similar_speeches']:
                 df = pd.DataFrame(analysis_result['similar_speeches'])

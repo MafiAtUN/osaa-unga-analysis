@@ -6,8 +6,11 @@ Provides advanced search capabilities with proper document referencing and citat
 import logging
 import re
 import json
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, Set
 from datetime import datetime
+from src.unga_analysis.utils.region_utils import (
+    extract_regions_and_countries,
+)
 try:
     from sentence_transformers import SentenceTransformer
     SENTENCE_TRANSFORMERS_AVAILABLE = True
@@ -115,41 +118,36 @@ class EnhancedSearchEngine:
     
     def extract_countries_from_query(self, query: str) -> List[str]:
         """Extract country names from query with enhanced matching."""
+        _, base_countries = extract_regions_and_countries(query)
+        countries: Set[str] = set(base_countries)
+
         query_lower = query.lower()
-        countries = []
-        
-        # Enhanced country mapping with more variations
-        country_mappings = {
-            'china': ['china', 'chinese', 'peoples republic of china', 'prc', 'beijing'],
-            'united states': ['united states', 'usa', 'us', 'america', 'american', 'washington'],
-            'russia': ['russia', 'russian', 'soviet union', 'ussr', 'moscow'],
-            'united kingdom': ['united kingdom', 'uk', 'britain', 'british', 'london'],
-            'france': ['france', 'french', 'paris'],
-            'germany': ['germany', 'german', 'berlin'],
-            'japan': ['japan', 'japanese', 'tokyo'],
-            'india': ['india', 'indian', 'new delhi'],
-            'brazil': ['brazil', 'brazilian', 'brasilia'],
-            'canada': ['canada', 'canadian', 'ottawa'],
-            'australia': ['australia', 'australian', 'canberra'],
-            'south africa': ['south africa', 'south african', 'pretoria'],
-            'nigeria': ['nigeria', 'nigerian', 'abuja'],
-            'egypt': ['egypt', 'egyptian', 'cairo'],
-            'turkey': ['turkey', 'turkish', 'ankara'],
-            'iran': ['iran', 'iranian', 'tehran'],
-            'saudi arabia': ['saudi arabia', 'saudi', 'riyadh'],
-            'african': ['african', 'africa', 'au', 'african union'],
-            'european': ['european', 'europe', 'eu', 'european union'],
-            'asian': ['asian', 'asia'],
-            'latin american': ['latin american', 'latin america'],
-            'developing': ['developing countries', 'developing', 'global south'],
-            'developed': ['developed countries', 'developed', 'global north']
+
+        alias_map = {
+            'China': ['beijing'],
+            'United States': ['washington'],
+            'Russia': ['moscow'],
+            'United Kingdom': ['london'],
+            'France': ['paris'],
+            'Germany': ['berlin'],
+            'Japan': ['tokyo'],
+            'India': ['new delhi'],
+            'Brazil': ['brasilia'],
+            'Canada': ['ottawa'],
+            'Australia': ['canberra'],
+            'South Africa': ['pretoria'],
+            'Nigeria': ['abuja'],
+            'Egypt': ['cairo'],
+            'Turkey': ['ankara'],
+            'Iran': ['tehran'],
+            'Saudi Arabia': ['riyadh'],
         }
-        
-        for country, variations in country_mappings.items():
+
+        for canonical, variations in alias_map.items():
             if any(var in query_lower for var in variations):
-                countries.append(country)
-        
-        return countries
+                countries.add(canonical)
+
+        return sorted(countries)
     
     def extract_years_from_query(self, query: str) -> List[int]:
         """Extract years from query with enhanced patterns."""
@@ -219,22 +217,7 @@ class EnhancedSearchEngine:
     
     def extract_regions_from_query(self, query: str) -> List[str]:
         """Extract regions from query."""
-        query_lower = query.lower()
-        regions = []
-        
-        region_mappings = {
-            'africa': ['africa', 'african', 'sub-saharan', 'north africa', 'west africa', 'east africa', 'southern africa'],
-            'europe': ['europe', 'european', 'eastern europe', 'western europe', 'northern europe', 'southern europe'],
-            'asia': ['asia', 'asian', 'southeast asia', 'south asia', 'east asia', 'central asia'],
-            'americas': ['americas', 'north america', 'south america', 'latin america', 'caribbean'],
-            'middle east': ['middle east', 'mideast', 'gulf', 'persian gulf', 'arab'],
-            'pacific': ['pacific', 'oceania', 'pacific islands', 'small island states']
-        }
-        
-        for region, variations in region_mappings.items():
-            if any(var in query_lower for var in variations):
-                regions.append(region)
-        
+        regions, _ = extract_regions_and_countries(query)
         return regions
     
     def extract_organizations_from_query(self, query: str) -> List[str]:

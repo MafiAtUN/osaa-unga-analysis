@@ -147,34 +147,50 @@ def process_analysis(uploaded_file, pasted_text, country, speech_date, classific
             # Step 4: Store in database
             with st.spinner("💾 Storing speech in database..."):
                 try:
-                    # Get country code and region
-                    from ...data.data_ingestion import COUNTRY_CODE_MAPPING, REGION_MAPPING
+                    from ...data.data_ingestion import (
+                        COUNTRY_CODE_MAPPING,
+                        data_ingestion_manager,
+                        get_additional_region_groupings_for_code,
+                        get_regions_for_code,
+                    )
+
                     country_code = None
                     for code, name in COUNTRY_CODE_MAPPING.items():
                         if name == country:
                             country_code = code
                             break
-                    
+
                     if not country_code:
                         st.warning(f"⚠️ Could not find country code for {country}. Using default.")
                         country_code = "UNK"
-                    
-                    region = REGION_MAPPING.get(country_code, "Other")
-                    is_african = (region == "Africa")
-                    
-                    # Store in database
-                    db_manager.add_speech(
-                        speech_text=speech_text,
-                        country_name=country,
+
+                    region_list = get_regions_for_code(country_code)
+                    primary_region = region_list[0] if region_list else "Unknown"
+                    additional_regions = get_additional_region_groupings_for_code(country_code)
+                    is_african = data_ingestion_manager.is_african_member(country)
+
+                    metadata = {
+                        "country_code": country_code,
+                        "regions": {
+                            "primary": primary_region,
+                            "additional": additional_regions,
+                        },
+                        "ingested_via": "new_analysis_tab",
+                    }
+
+                    db_manager.save_speech_data(
                         country_code=country_code,
+                        country_name=country,
+                        region=primary_region,
+                        session=year - 1945,
                         year=year,
-                        region=region,
+                        speech_text=speech_text,
+                        source_filename=uploaded_file.name if uploaded_file else None,
                         is_african_member=is_african,
-                        word_count=word_count,
-                        session_number=year - 1945  # Calculate session number
+                        metadata=metadata,
                     )
-                    
-                    st.success(f"✅ Speech stored in database for future use!")
+
+                    st.success("✅ Speech stored in database for future use!")
                 except Exception as e:
                     st.error(f"❌ Error storing in database: {e}")
                     # Continue with analysis even if storage fails
@@ -363,7 +379,7 @@ def render_new_analysis_tab():
     
     # Add "Start New Analysis" button if there are existing results
     if 'current_analysis_data' in st.session_state and st.session_state.current_analysis_data:
-        if st.button("➕ Start New Analysis", type="secondary", use_container_width=True):
+        if st.button("➕ Start New Analysis", type="secondary", use_container_width=True, key="new_analysis_reset"):
             # Clear current analysis
             st.session_state.current_analysis_data = None
             st.session_state.selected_question = ""
@@ -445,7 +461,7 @@ def render_new_analysis_tab():
         st.error("❌ Rate limit exceeded. Please wait before making another request.")
         return
     
-    if st.button("🚀 Start Analysis", type="primary", use_container_width=True):
+    if st.button("🚀 Start Analysis", type="primary", use_container_width=True, key="new_analysis_start"):
         if not country:
             st.error("❌ Please select a country name.")
             return
